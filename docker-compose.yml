@@ -22,7 +22,7 @@ services:
     container_name: billing-backend
     restart: unless-stopped
     ports:
-      - "8002:8000"
+      - "127.0.0.1:8002:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -40,48 +40,6 @@ services:
     networks:
       - billing_network
 
-  nginx:
-    image: nginx:latest
-    container_name: nginx_billing_prod
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - /mnt/ebs/certbot/conf:/etc/letsencrypt:ro
-      - /mnt/ebs/certbot/www:/var/www/certbot:ro
-      - /mnt/ebs/staticfiles:/var/www/static:ro
-      - /mnt/ebs/media:/var/www/media:ro
-    depends_on:
-      - backend
-    networks:
-      - billing_network
-
-  certbot:
-    image: certbot/certbot
-    container_name: certbot_billing
-    volumes:
-      - /mnt/ebs/certbot/conf:/etc/letsencrypt
-      - /mnt/ebs/certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    networks:
-      - billing_network
-
 networks:
   billing_network:
     driver: bridge
-
-volumes:
-  postgres_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /mnt/ebs/postgres_data
-
-
-
-
-
-
