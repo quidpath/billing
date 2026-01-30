@@ -80,6 +80,11 @@ DATABASES = {
 if os.environ.get("REQUIRE_DB_SSL", "false").lower() == "true":
     DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
 
+# Custom User Model (must match main backend)
+# The main backend uses Authentication.CustomUser
+# We create a proxy model to reference it
+AUTH_USER_MODEL = 'billing.CustomUser'
+
 # Authentication backends
 AUTHENTICATION_BACKENDS = [
     'billing_service.billing.auth_backends.RemoteAuthBackend',  # Remote auth against main backend

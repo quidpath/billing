@@ -5,6 +5,7 @@ from .trial import Trial
 from .invoice import Invoice, InvoiceLineItem
 from .payment import Payment, PaymentMethod
 from .payment_verification import PaymentVerification
+from .user import CustomUser
 
 __all__ = [
     'Plan',
@@ -22,6 +23,7 @@ __all__ = [
     'Payment',
     'PaymentMethod',
     'PaymentVerification',
+    'CustomUser',
 ]
 
 

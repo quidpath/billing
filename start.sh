@@ -34,8 +34,8 @@ echo "🐍 Using Python at: $PYTHON"
 echo "📦 Running makemigrations..."
 $PYTHON manage.py makemigrations --noinput
 
-echo "📦 Running migrations..."
-$PYTHON manage.py migrate --noinput
+echo "📦 Running migrations on default database only..."
+$PYTHON manage.py migrate --database=default --noinput
 
 echo "🌱 Collecting static files..."
 $PYTHON manage.py collectstatic --noinput
