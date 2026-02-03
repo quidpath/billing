@@ -1,0 +1,306 @@
+QUIDPATH PRODUCTION DEPLOYMENT GUIDE
+=====================================
+
+SERVER INFO:
+- IP: 51.77.147.233
+- User: quidpath
+- Deployment Path: ~/quidpath-deployment
+- Folders: backend, billing, tazama, frontend, nginx, data
+
+STEP-BY-STEP DEPLOYMENT
+========================
+
+1. GENERATE SECRETS (Run on your local machine)
+------------------------------------------------
+openssl rand -hex 32  # JWT_SECRET_KEY (use SAME for all)
+openssl rand -hex 32  # BILLING_WEBHOOK_SECRET (use SAME for backend + billing)
+openssl rand -hex 32  # BILLING_SERVICE_API_KEY
+openssl rand -hex 32  # TAZAMA_SERVICE_API_KEY
+openssl rand -hex 32  # Backend SECRET_KEY
+openssl rand -hex 32  # Billing SECRET_KEY
+openssl rand -hex 32  # Tazama SECRET_KEY
+openssl rand -base64 24  # Backend DB Password
+openssl rand -base64 24  # Billing DB Password
+openssl rand -base64 24  # Tazama DB Password
+
+SAVE THESE VALUES!
+
+2. CREATE .ENV FILES ON SERVER
+-------------------------------
+
+SSH to server:
+ssh ubuntu@51.77.147.233
+su - quidpath
+
+A. Backend .env (~/quidpath-deployment/backend/.env)
+-----------------------------------------------------
+cat > ~/quidpath-deployment/backend/.env << 'EOF'
+DATABASE_URL=postgresql://quidpath_user:PASTE_BACKEND_DB_PASSWORD@db:5432/quidpath_db
+POSTGRES_DB=quidpath_db
+POSTGRES_USER=quidpath_user
+POSTGRES_PASSWORD=PASTE_BACKEND_DB_PASSWORD
+
+DEBUG=False
+DJANGO_SETTINGS_MODULE=quidpath_backend.settings.prod
+SECRET_KEY=PASTE_BACKEND_SECRET_KEY
+ALLOWED_HOSTS=api.quidpath.com,quidpath.com,www.quidpath.com
+CSRF_TRUSTED_ORIGINS=https://quidpath.com,https://www.quidpath.com,https://*.quidpath.com
+
+SMTP_USER=quidpath@gmail.com
+SMTP_PASSWORD=krpm whuy jfav lstb
+
+JWT_SECRET_KEY=PASTE_JWT_SECRET_KEY
+BILLING_SERVICE_API_KEY=PASTE_BILLING_SERVICE_API_KEY
+TAZAMA_SERVICE_API_KEY=PASTE_TAZAMA_SERVICE_API_KEY
+BILLING_WEBHOOK_SECRET=PASTE_BILLING_WEBHOOK_SECRET
+BILLING_SERVICE_URL=http://billing-backend:8000/api/billing
+
+MPESA_CONSUMER_KEY=WZ6b1Y6ZjRbwNJwwQzULthXjesQR0OtsEuQh9jt7tz3CtSpG
+MPESA_CONSUMER_SECRET=zuVci1S1rl6An6bistz6jUo1eJ0Is8kM3IGlghGFCUpF4coKx7YtmGbAbLgvyddS
+MPESA_SHORTCODE=174379
+MPESA_PASSKEY=bfb279f9aa9bdbcf158e97dd71a467cd
+MPESA_CALLBACK_URL=https://api.quidpath.com/api/payments/mpesa/callback/
+EOF
+
+B. Billing .env (~/quidpath-deployment/billing/.env)
+-----------------------------------------------------
+cat > ~/quidpath-deployment/billing/.env << 'EOF'
+DJANGO_SETTINGS_MODULE=billing_service.settings.prod
+SECRET_KEY=PASTE_BILLING_SECRET_KEY
+DEBUG=False
+ALLOWED_HOSTS=billing.quidpath.com,api.quidpath.com
+CSRF_TRUSTED_ORIGINS=https://quidpath.com,https://www.quidpath.com,https://*.quidpath.com
+
+POSTGRES_DB=billing_prod
+POSTGRES_USER=billing_user
+POSTGRES_PASSWORD=PASTE_BILLING_DB_PASSWORD
+DATABASE_URL=postgresql://billing_user:PASTE_BILLING_DB_PASSWORD@db:5432/billing_prod
+
+JWT_SECRET_KEY=PASTE_JWT_SECRET_KEY
+SERVICE_API_KEY=PASTE_BILLING_SERVICE_API_KEY
+ERP_BACKEND_URL=http://django-backend:8000
+BILLING_WEBHOOK_SECRET=PASTE_BILLING_WEBHOOK_SECRET
+
+USER_CACHE_TTL=3600
+CORPORATE_CACHE_TTL=86400
+
+PORT=8000
+WORKERS=4
+EOF
+
+C. Tazama .env (~/quidpath-deployment/tazama/.env)
+---------------------------------------------------
+cat > ~/quidpath-deployment/tazama/.env << 'EOF'
+SECRET_KEY=PASTE_TAZAMA_SECRET_KEY
+DEBUG=False
+DJANGO_SETTINGS_MODULE=tazama_ai.settings.prod
+ALLOWED_HOSTS=ai.quidpath.com,api.quidpath.com
+
+POSTGRES_DB=tazama_db
+POSTGRES_USER=tazama_user
+POSTGRES_PASSWORD=PASTE_TAZAMA_DB_PASSWORD
+DATABASE_URL=postgresql://tazama_user:PASTE_TAZAMA_DB_PASSWORD@db:5432/tazama_db
+
+JWT_SECRET_KEY=PASTE_JWT_SECRET_KEY
+SERVICE_API_KEY=PASTE_TAZAMA_SERVICE_API_KEY
+ERP_BACKEND_URL=http://django-backend:8000
+
+USER_CACHE_TTL=3600
+CORPORATE_CACHE_TTL=86400
+
+CORS_ALLOWED_ORIGINS=https://quidpath.com,https://www.quidpath.com
+
+PORT=8001
+GUNICORN_WORKERS=3
+GUNICORN_TIMEOUT=120
+EOF
+
+D. Frontend .env (~/quidpath-deployment/frontend/.env)
+-------------------------------------------------------
+cat > ~/quidpath-deployment/frontend/.env << 'EOF'
+NEXT_PUBLIC_API_BASE_URL=https://api.quidpath.com/
+NEXT_PUBLIC_TAZAMA_AI_API_URL=https://ai.quidpath.com/api/tazama/
+NEXT_PUBLIC_BILLING_SERVICE_URL=https://billing.quidpath.com/api/billing
+EOF
+
+3. REPLACE PLACEHOLDERS
+------------------------
+Edit each .env file and replace PASTE_* with actual values from step 1.
+
+CRITICAL: JWT_SECRET_KEY must be SAME in backend, billing, and tazama!
+
+4. VERIFY SSL CERTIFICATES
+---------------------------
+sudo certbot certificates
+
+If missing, obtain them:
+sudo systemctl stop nginx
+sudo certbot certonly --standalone -d api.quidpath.com
+sudo certbot certonly --standalone -d quidpath.com -d www.quidpath.com
+sudo certbot certonly --standalone -d billing.quidpath.com
+sudo certbot certonly --standalone -d ai.quidpath.com
+sudo systemctl start nginx
+
+5. DEPLOY ALL SERVICES
+-----------------------
+cd ~/quidpath-deployment
+chmod +x cleanup-and-deploy.sh
+./cleanup-and-deploy.sh
+
+This will:
+- Remove all .md documentation files
+- Deploy backend, billing, tazama, and frontend
+- Run migrations
+- Collect static files
+- Reload nginx
+- Run health checks
+
+6. CREATE SUPERUSERS (First time only)
+---------------------------------------
+docker exec -it django-backend python manage.py createsuperuser
+docker exec -it billing-backend python manage.py createsuperuser
+docker exec -it tazama-ai-backend python manage.py createsuperuser
+
+7. VERIFY DEPLOYMENT
+--------------------
+curl https://api.quidpath.com/api/auth/health/
+curl https://billing.quidpath.com/api/billing/health/
+curl https://ai.quidpath.com/api/tazama/health/
+curl https://quidpath.com/
+
+All should return 200 OK
+
+8. TEST JWT AUTHENTICATION
+---------------------------
+# Login
+curl -X POST https://api.quidpath.com/api/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"your-password"}'
+
+# Use token with billing
+curl https://billing.quidpath.com/api/billing/plans/ \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+9. SETUP AUTO-RENEWAL FOR SSL
+------------------------------
+sudo systemctl status certbot.timer
+sudo certbot renew --dry-run
+
+10. SETUP AUTOMATED BACKUPS
+----------------------------
+cat > ~/backup-databases.sh << 'EOF'
+#!/bin/bash
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR=~/backups
+mkdir -p $BACKUP_DIR
+
+docker exec postgres_prod pg_dump -U quidpath_user quidpath_db > $BACKUP_DIR/backend_$DATE.sql
+docker exec postgres_billing_prod pg_dump -U billing_user billing_prod > $BACKUP_DIR/billing_$DATE.sql
+docker exec tazama_postgres pg_dump -U tazama_user tazama_db > $BACKUP_DIR/tazama_$DATE.sql
+
+# Keep only last 7 days
+find $BACKUP_DIR -name "*.sql" -mtime +7 -delete
+EOF
+
+chmod +x ~/backup-databases.sh
+
+# Add to crontab
+crontab -e
+# Add: 0 2 * * * ~/backup-databases.sh
+
+MONITORING
+==========
+
+Health Check:
+docker ps
+curl https://api.quidpath.com/api/auth/health/
+
+View Logs:
+docker logs django-backend --tail 100 -f
+docker logs billing-backend --tail 100 -f
+docker logs tazama-ai-backend --tail 100 -f
+docker logs quidpath-frontend --tail 100 -f
+
+Restart Service:
+cd ~/quidpath-deployment/<service>
+docker compose restart
+
+TROUBLESHOOTING
+===============
+
+Service not starting:
+docker logs <container-name>
+docker exec <container-name> env | grep -E "JWT|SECRET|DATABASE"
+
+JWT auth failing:
+docker exec django-backend env | grep JWT_SECRET_KEY
+docker exec billing-backend env | grep JWT_SECRET_KEY
+docker exec tazama-ai-backend env | grep JWT_SECRET_KEY
+# All three must match!
+
+Webhook not working:
+docker logs django-backend | grep webhook
+docker logs billing-backend | grep webhook
+docker exec billing-backend ping django-backend
+
+ZERO-DOWNTIME UPDATES
+=====================
+
+To update without downtime:
+
+1. Pull latest code:
+cd ~/quidpath-deployment/<service>
+git pull origin main
+
+2. Build new image:
+docker compose build --no-cache
+
+3. Rolling restart:
+docker compose up -d --no-deps --build <service-name>
+
+4. Run migrations:
+docker exec <container-name> python manage.py migrate
+
+5. Verify:
+curl https://<domain>/health/
+
+CI/CD INTEGRATION
+=================
+
+GitHub Actions will automatically deploy on push to main branch.
+Ensure these secrets are set in GitHub:
+
+- SSH_PRIVATE_KEY
+- SERVER_HOST (51.77.147.233)
+- SERVER_USER (quidpath)
+- JWT_SECRET_KEY
+- BILLING_WEBHOOK_SECRET
+- BILLING_SERVICE_API_KEY
+- TAZAMA_SERVICE_API_KEY
+
+SUPPORT
+=======
+
+Check logs first:
+docker logs <container-name> --tail 100
+
+Common issues:
+1. JWT_SECRET_KEY mismatch - verify all three services have same value
+2. Webhook secret mismatch - verify backend and billing have same value
+3. Service API key mismatch - verify keys match between services
+4. Database connection - check DATABASE_URL format
+5. SSL certificate expired - run: sudo certbot renew
+
+SECURITY CHECKLIST
+==================
+
+- All secrets are strong (32+ characters)
+- JWT_SECRET_KEY is same across all services
+- BILLING_WEBHOOK_SECRET matches in backend and billing
+- Service API keys match between services
+- DEBUG=False in all .env files
+- Database passwords are unique and strong
+- SSL certificates are valid
+- Firewall configured (ports 80, 443, 22 only)
+- Regular backups configured
+- Certbot auto-renewal enabled

@@ -1,0 +1,188 @@
+QUIDPATH GITHUB ACTIONS - QUICK SETUP CHECKLIST
+================================================
+
+STEP 1: GET YOUR SSH PRIVATE KEY
+---------------------------------
+[ ] On your local machine, run:
+    cat ~/.ssh/id_rsa
+    
+[ ] Copy ENTIRE output (including BEGIN and END lines)
+
+[ ] Save it somewhere safe (you'll need it 4 times)
+
+STEP 2: ADD SECRETS TO BACKEND REPOSITORY
+------------------------------------------
+[ ] Go to: https://github.com/YOUR_USERNAME/quidpath-backend/settings/secrets/actions
+
+[ ] Click "New repository secret"
+
+[ ] Add SECRET 1:
+    Name: SERVER_HOST
+    Value: 51.77.147.233
+    Click "Add secret"
+
+[ ] Click "New repository secret" again
+
+[ ] Add SECRET 2:
+    Name: SSH_PRIVATE_KEY
+    Value: (paste your SSH private key)
+    Click "Add secret"
+
+STEP 3: ADD SECRETS TO BILLING REPOSITORY
+------------------------------------------
+[ ] Go to: https://github.com/YOUR_USERNAME/billing/settings/secrets/actions
+
+[ ] Add SERVER_HOST: 51.77.147.233
+
+[ ] Add SSH_PRIVATE_KEY: (paste your SSH private key)
+
+STEP 4: ADD SECRETS TO TAZAMA REPOSITORY
+-----------------------------------------
+[ ] Go to: https://github.com/YOUR_USERNAME/tazama-ai-microservice/settings/secrets/actions
+
+[ ] Add SERVER_HOST: 51.77.147.233
+
+[ ] Add SSH_PRIVATE_KEY: (paste your SSH private key)
+
+STEP 5: ADD SECRETS TO FRONTEND REPOSITORY
+-------------------------------------------
+[ ] Go to: https://github.com/YOUR_USERNAME/quidpath-erp-frontend/settings/secrets/actions
+
+[ ] Add SERVER_HOST: 51.77.147.233
+
+[ ] Add SSH_PRIVATE_KEY: (paste your SSH private key)
+
+STEP 6: TEST BACKEND DEPLOYMENT
+--------------------------------
+[ ] Edit quidpath-backend/README.md (add a space or comment)
+
+[ ] Run:
+    git add .
+    git commit -m "Test backend deployment"
+    git push origin main
+
+[ ] Go to: https://github.com/YOUR_USERNAME/quidpath-backend/actions
+
+[ ] Watch "Deploy to Production" workflow run
+
+[ ] Should see green checkmark when done
+
+[ ] Verify: curl https://api.quidpath.com/api/auth/health/
+
+STEP 7: TEST BILLING DEPLOYMENT
+--------------------------------
+[ ] Edit billing/README.md
+
+[ ] Run:
+    git add .
+    git commit -m "Test billing deployment"
+    git push origin main
+
+[ ] Watch: https://github.com/YOUR_USERNAME/billing/actions
+
+[ ] Verify: curl https://billing.quidpath.com/api/billing/health/
+
+STEP 8: TEST TAZAMA DEPLOYMENT
+-------------------------------
+[ ] Edit tazama-ai-microservice/README.md
+
+[ ] Run:
+    git add .
+    git commit -m "Test tazama deployment"
+    git push origin main
+
+[ ] Watch: https://github.com/YOUR_USERNAME/tazama-ai-microservice/actions
+
+[ ] Verify: curl https://ai.quidpath.com/api/tazama/health/
+
+STEP 9: TEST FRONTEND DEPLOYMENT
+---------------------------------
+[ ] Edit quidpath-erp-frontend/README.md
+
+[ ] Run:
+    git add .
+    git commit -m "Test frontend deployment"
+    git push origin main
+
+[ ] Watch: https://github.com/YOUR_USERNAME/quidpath-erp-frontend/actions
+
+[ ] Verify: curl https://quidpath.com/
+
+STEP 10: VERIFY ALL SERVICES
+-----------------------------
+[ ] All 4 workflows completed successfully
+
+[ ] All health checks return 200 OK
+
+[ ] No errors in Actions tab
+
+[ ] Services running: docker ps (on server)
+
+DONE!
+=====
+
+[ ] GitHub Actions configured for all 4 services
+
+[ ] Automatic deployment on push to main
+
+[ ] Zero downtime deployments
+
+[ ] Health checks working
+
+[ ] All services accessible
+
+WHAT HAPPENS NOW:
+-----------------
+
+Every time you push to main branch:
+1. GitHub Actions triggers automatically
+2. Connects to your server
+3. Pulls latest code
+4. Builds new Docker image
+5. Rolling update (zero downtime)
+6. Runs migrations
+7. Collects static files
+8. Health check
+9. Success!
+
+Users never notice the update!
+
+TROUBLESHOOTING:
+----------------
+
+If workflow fails:
+[ ] Check Actions tab for error message
+[ ] Verify secrets are correct (SERVER_HOST and SSH_PRIVATE_KEY)
+[ ] Test SSH manually: ssh ubuntu@51.77.147.233
+[ ] Check server: docker ps
+[ ] Review logs: docker logs <container-name>
+
+Common fixes:
+- Wrong SSH key: Re-add SSH_PRIVATE_KEY secret
+- Permission denied: sudo usermod -aG docker quidpath
+- Git pull fails: Check repo is in ~/quidpath-deployment/
+- Health check fails: Check service is running
+
+NEED HELP?
+----------
+
+Read these files:
+- READY-TO-DEPLOY.txt - Quick overview
+- GITHUB-ACTIONS-SETUP.txt - Detailed setup guide
+- DEPLOY-COMMANDS.txt - Manual deployment commands
+
+Or SSH to server and check:
+ssh ubuntu@51.77.147.233
+su - quidpath
+docker ps
+docker logs <container-name>
+
+CONGRATULATIONS!
+================
+
+Your CI/CD pipeline is ready!
+Just push to main and watch it deploy automatically.
+Zero downtime. Happy users. Easy deployments.
+
+Total setup time: ~15 minutes
+Future deployments: Automatic!

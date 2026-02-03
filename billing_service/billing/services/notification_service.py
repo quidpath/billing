@@ -2,63 +2,66 @@
 Notification Service for Billing
 Handles email notifications for invoices, payments, and subscription events
 """
+
+import logging
 import os
 import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import Optional
-import logging
 
 logger = logging.getLogger(__name__)
 
 
 class NotificationService:
     """Service for sending billing notifications"""
-    
+
     @staticmethod
-    def send_email(to_email: str, subject: str, html_body: str, text_body: Optional[str] = None) -> bool:
+    def send_email(
+        to_email: str, subject: str, html_body: str, text_body: Optional[str] = None
+    ) -> bool:
         """Send email notification"""
         try:
-            smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
-            smtp_port = int(os.environ.get('SMTP_PORT', 587))
-            smtp_user = os.environ.get('SMTP_USER', '')
-            smtp_pass = os.environ.get('SMTP_PASSWORD', '')
-            from_email = os.environ.get('DEFAULT_FROM_EMAIL', 'billing@quidpath.com')
-            
+            smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+            smtp_port = int(os.environ.get("SMTP_PORT", 587))
+            smtp_user = os.environ.get("SMTP_USER", "")
+            smtp_pass = os.environ.get("SMTP_PASSWORD", "")
+            from_email = os.environ.get("DEFAULT_FROM_EMAIL", "billing@quidpath.com")
+
             if not smtp_user or not smtp_pass:
                 logger.warning("SMTP credentials not configured, skipping email")
                 return False
-            
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From'] = from_email
-            msg['To'] = to_email
-            
+
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = from_email
+            msg["To"] = to_email
+
             if text_body:
-                part1 = MIMEText(text_body, 'plain')
+                part1 = MIMEText(text_body, "plain")
                 msg.attach(part1)
-            
-            part2 = MIMEText(html_body, 'html')
+
+            part2 = MIMEText(html_body, "html")
             msg.attach(part2)
-            
+
             with smtplib.SMTP(smtp_host, smtp_port) as server:
                 server.starttls()
                 server.login(smtp_user, smtp_pass)
                 server.send_message(msg)
-            
+
             logger.info(f"Email sent successfully to {to_email}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Error sending email to {to_email}: {str(e)}")
             return False
-    
+
     @staticmethod
     def send_invoice_created_notification(invoice, corporate_email: str) -> bool:
         """Send notification when new invoice is created"""
         subject = f"New Invoice {invoice.invoice_number} - Quidpath Billing"
-        
+
         html_body = f"""
         <html>
         <body style="font-family: Arial, sans-serif; color: #333;">
@@ -97,7 +100,7 @@ class NotificationService:
         </body>
         </html>
         """
-        
+
         text_body = f"""
         New Invoice from Quidpath
         
@@ -117,14 +120,16 @@ class NotificationService:
         
         © {datetime.now().year} Quidpath. All rights reserved.
         """
-        
-        return NotificationService.send_email(corporate_email, subject, html_body, text_body)
-    
+
+        return NotificationService.send_email(
+            corporate_email, subject, html_body, text_body
+        )
+
     @staticmethod
     def send_payment_confirmation_notification(payment, corporate_email: str) -> bool:
         """Send notification when payment is confirmed"""
         subject = f"Payment Confirmed - Invoice {payment.invoice.invoice_number}"
-        
+
         html_body = f"""
         <html>
         <body style="font-family: Arial, sans-serif; color: #333;">
@@ -167,7 +172,7 @@ class NotificationService:
         </body>
         </html>
         """
-        
+
         text_body = f"""
         Payment Confirmed!
         
@@ -188,17 +193,21 @@ class NotificationService:
         
         © {datetime.now().year} Quidpath. All rights reserved.
         """
-        
-        return NotificationService.send_email(corporate_email, subject, html_body, text_body)
-    
+
+        return NotificationService.send_email(
+            corporate_email, subject, html_body, text_body
+        )
+
     @staticmethod
-    def send_invoice_reminder_notification(invoice, corporate_email: str, days_until_due: int) -> bool:
+    def send_invoice_reminder_notification(
+        invoice, corporate_email: str, days_until_due: int
+    ) -> bool:
         """Send reminder notification for upcoming invoice due date"""
         subject = f"Payment Reminder - Invoice {invoice.invoice_number} Due in {days_until_due} Days"
-        
+
         urgency_color = "#f39c12" if days_until_due > 3 else "#e74c3c"
         urgency_message = "soon" if days_until_due > 3 else "very soon"
-        
+
         html_body = f"""
         <html>
         <body style="font-family: Arial, sans-serif; color: #333;">
@@ -240,7 +249,7 @@ class NotificationService:
         </body>
         </html>
         """
-        
+
         text_body = f"""
         Payment Reminder
         
@@ -260,14 +269,18 @@ class NotificationService:
         
         © {datetime.now().year} Quidpath. All rights reserved.
         """
-        
-        return NotificationService.send_email(corporate_email, subject, html_body, text_body)
-    
+
+        return NotificationService.send_email(
+            corporate_email, subject, html_body, text_body
+        )
+
     @staticmethod
-    def send_trial_expiring_notification(trial, corporate_email: str, days_remaining: int) -> bool:
+    def send_trial_expiring_notification(
+        trial, corporate_email: str, days_remaining: int
+    ) -> bool:
         """Send notification when trial is about to expire"""
         subject = f"Your Quidpath Trial Expires in {days_remaining} Days"
-        
+
         html_body = f"""
         <html>
         <body style="font-family: Arial, sans-serif; color: #333;">
@@ -304,7 +317,7 @@ class NotificationService:
         </body>
         </html>
         """
-        
+
         text_body = f"""
         Your Trial is Ending Soon
         
@@ -324,7 +337,7 @@ class NotificationService:
         
         © {datetime.now().year} Quidpath. All rights reserved.
         """
-        
-        return NotificationService.send_email(corporate_email, subject, html_body, text_body)
 
-
+        return NotificationService.send_email(
+            corporate_email, subject, html_body, text_body
+        )
