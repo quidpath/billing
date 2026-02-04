@@ -211,8 +211,8 @@ ERP_BACKEND_URL=http://django-backend:8000
 - **Backend:** Use container names for inter-service URLs
 
 ### Ports
-- **Internal:** Always 8000 (inside container)
-- **External:** 8002 for billing, 8000 for main backend
+- **Internal:** Always 8000 (inside container) for backend/billing, 8001 for tazama
+- **External:** 8004 for main backend, 8005 for billing, 8006 for tazama
 
 ### Networks
 - **Shared:** `quidpath_network` (external)

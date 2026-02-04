@@ -36,6 +36,12 @@
 - **django-backend-dev**: Port 8000 → 8000 (container)
 - **postgres_dev**: Port 5432 → 5432 (container)
 
+### Production Ports:
+
+- **django-backend**: Port 8004 → 8000 (container)
+- **billing-backend**: Port 8005 → 8000 (container)
+- **tazama-ai-backend**: Port 8006 → 8001 (container)
+
 ### Next Steps:
 
 The billing service is now accessible from quidpath-backend. The 401 error you're seeing is expected - it means the connection is working but authentication is required. You'll need to ensure proper JWT tokens are being sent from the quidpath-backend when making requests to the billing service.
