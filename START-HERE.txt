@@ -1,0 +1,120 @@
+========================================
+QUIDPATH DEVELOPMENT ENVIRONMENT
+START HERE
+========================================
+
+STEP 1: ENSURE DOCKER IS RUNNING
+---------------------------------
+Make sure Docker Desktop is running on your machine.
+
+STEP 2: START ALL SERVICES
+---------------------------
+Run this command in PowerShell or CMD:
+
+    .\start-all-dev.bat
+
+This will:
+- Create Docker network
+- Start Backend, Billing, and Tazama services
+- Run database migrations
+- Create admin superusers
+
+Wait 1-2 minutes for all services to start.
+
+STEP 3: TEST ADMIN ACCESS
+--------------------------
+Run this command:
+
+    .\test-admin-access.bat
+
+This will:
+- Test if admin panels are accessible
+- Open admin panels in your browser
+
+STEP 4: LOGIN TO ADMIN PANELS
+------------------------------
+Use these credentials:
+- Username: admin
+- Password: admin123
+
+Admin URLs:
+- Backend:  http://localhost:8000/admin
+- Billing:  http://localhost:8002/admin
+- Tazama:   http://localhost:8001/admin
+
+========================================
+TROUBLESHOOTING
+========================================
+
+If admin panels don't load:
+
+1. Check if containers are running:
+   docker ps
+
+2. Run diagnostics:
+   .\check-dev-services.bat
+
+3. Check logs:
+   docker logs django-backend-dev
+   docker logs billing-backend-dev
+   docker logs tazama-ai-backend-dev
+
+4. Recreate superusers:
+   .\create-superusers.bat
+
+5. Restart services:
+   cd quidpath-backend
+   docker compose -f docker-compose.dev.yml restart
+
+========================================
+COMMON ISSUES
+========================================
+
+Issue: "Port already in use"
+Solution: Stop existing containers
+    docker compose -f docker-compose.dev.yml down
+
+Issue: "Cannot connect to database"
+Solution: Wait 30 seconds for database to initialize
+
+Issue: "Cannot login to admin"
+Solution: Run .\create-superusers.bat
+
+Issue: "Container not found"
+Solution: Restart with .\start-all-dev.bat
+
+========================================
+HELPFUL SCRIPTS
+========================================
+
+start-all-dev.bat       - Start all services
+test-admin-access.bat   - Test and open admin panels
+check-dev-services.bat  - Run diagnostics
+create-superusers.bat   - Create admin users
+
+========================================
+NEXT STEPS
+========================================
+
+1. Run: .\start-all-dev.bat
+2. Wait 1-2 minutes
+3. Run: .\test-admin-access.bat
+4. Login with admin/admin123
+5. Start developing!
+
+For detailed documentation, see:
+- QUICK-START-DEV.md
+- DEV-ENVIRONMENT-GUIDE.txt
+
+========================================
+SUPPORT
+========================================
+
+If you still have issues:
+1. Check Docker Desktop is running
+2. Check container logs
+3. Verify ports 8000, 8001, 8002 are free
+4. Restart Docker Desktop
+5. Run .\start-all-dev.bat again
+
+Happy coding!

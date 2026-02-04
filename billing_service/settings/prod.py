@@ -16,7 +16,7 @@ DATABASES = {
         "NAME": os.getenv("POSTGRES_DB", "billing_prod"),
         "USER": os.getenv("POSTGRES_USER", "billing_user"),
         "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-        "HOST": "postgres_billing_prod",
+        "HOST": os.getenv("DB_HOST", "db"),  # Use service name from docker-compose
         "PORT": "5432",
         "OPTIONS": {
             "sslmode": "disable",

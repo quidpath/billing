@@ -104,7 +104,7 @@ BILLING_WEBHOOK_SECRET = os.environ.get("BILLING_WEBHOOK_SECRET", "")
 # Cache Configuration
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocalMemoryCache",
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         "LOCATION": "billing-cache",
     }
 }

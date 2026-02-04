@@ -20,9 +20,9 @@ RUN pip install --no-cache-dir -r requirements/dev.txt
 # Copy project
 COPY . /app
 
-EXPOSE 8002
+EXPOSE 8000
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8002"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
 
 

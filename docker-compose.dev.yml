@@ -1,0 +1,44 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: billing-backend-dev
+    ports:
+      - "8002:8000"
+    volumes:
+      - .:/app
+    env_file:
+      - .env.dev
+    environment:
+      DJANGO_SETTINGS_MODULE: billing_service.settings.dev
+      ERP_BACKEND_URL: http://django-backend-dev:8000
+    depends_on:
+      - db
+    networks:
+      - billing_net
+      - quidpath_network
+
+  db:
+    image: postgres:15
+    container_name: postgres_billing_dev
+    restart: always
+    environment:
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: billing_devdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - billing_net
+
+volumes:
+  postgres_data:
+
+networks:
+  billing_net:
+    driver: bridge
+  quidpath_network:
+    external: true
