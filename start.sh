@@ -13,12 +13,21 @@ fi
 
 cd "$APP_DIR"
 
-# Load environment variables from .env if it exists
+# Load environment variables from .env without sourcing (avoids shell interpreting $()& etc.)
 if [ -f .env ]; then
   echo "Loading environment variables from .env"
-  set -o allexport
-  . .env
-  set +o allexport
+  while IFS= read -r line || [ -n "$line" ]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+      key="${BASH_REMATCH[1]}"
+      value="${BASH_REMATCH[2]}"
+      # Strip surrounding single or double quotes so JWT_SECRET_KEY etc. work
+      value="${value#\'}"; value="${value%\'}"
+      value="${value#\"}"; value="${value%\"}"
+      export "$key=$value"
+    fi
+  done < .env
 fi
 
 # Detect Python interpreter
