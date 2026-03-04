@@ -92,10 +92,10 @@ class Command(BaseCommand):
                 tier=plan_data["tier"], defaults=plan_data
             )
             if created:
-                self.stdout.write(self.style.SUCCESS(f"✓ Created {plan.name} plan"))
+                self.stdout.write(self.style.SUCCESS("Created %s plan" % plan.name))
             else:
                 self.stdout.write(
-                    self.style.WARNING(f"→ {plan.name} plan already exists")
+                    self.style.WARNING("%s plan already exists" % plan.name)
                 )
 
-        self.stdout.write(self.style.SUCCESS("\n✓ Plans seeded successfully!"))
+        self.stdout.write(self.style.SUCCESS("\nPlans seeded successfully."))

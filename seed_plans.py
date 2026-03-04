@@ -150,7 +150,7 @@ for plan_data in plans_data:
         tier=plan_data["tier"], defaults=plan_data
     )
     if created:
-        print(f"✅ Created plan: {plan.name}")
+        print("Created plan: %s" % plan.name)
     else:
         # Update existing plan
         for key, value in plan_data.items():
@@ -158,7 +158,7 @@ for plan_data in plans_data:
         plan.save()
         print(f"📝 Updated plan: {plan.name}")
 
-print("\n🎉 Plans seeded successfully!")
+print("\nPlans seeded successfully.")
 print("\nCreated plans:")
 for plan in Plan.objects.all().order_by("price_monthly"):
     print(

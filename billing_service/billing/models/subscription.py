@@ -14,6 +14,7 @@ from .plan import BaseModel, Plan
 class Subscription(BaseModel):
     """
     Customer subscription to a plan
+    Supports both individual users and organizations
     """
 
     STATUS_CHOICES = [
@@ -23,6 +24,7 @@ class Subscription(BaseModel):
         ("cancelled", "Cancelled"),
         ("expired", "Expired"),
         ("pending", "Pending"),
+        ("pending_payment", "Pending Payment"),
     ]
 
     BILLING_CYCLES = [
@@ -31,8 +33,20 @@ class Subscription(BaseModel):
         ("yearly", "Yearly"),
     ]
 
-    # Corporate/Organization (reference to ERP)
-    corporate_id = models.UUIDField()  # Reference to Corporate in ERP
+    SUBSCRIPTION_TYPES = [
+        ("individual", "Individual"),
+        ("organization", "Organization"),
+    ]
+
+    # Subscription Type
+    subscription_type = models.CharField(
+        max_length=20, 
+        choices=SUBSCRIPTION_TYPES, 
+        default="organization"
+    )
+
+    # Corporate/Organization or Individual User (reference to ERP)
+    corporate_id = models.UUIDField()  # Reference to Corporate or User in ERP
     corporate_name = models.CharField(
         max_length=255, blank=True
     )  # Denormalized for convenience
@@ -93,6 +107,7 @@ class Subscription(BaseModel):
         verbose_name_plural = "Subscriptions"
         indexes = [
             models.Index(fields=["corporate_id", "status"]),
+            models.Index(fields=["subscription_type", "status"]),
             models.Index(fields=["status", "end_date"]),
             models.Index(fields=["trial_end_date"]),
         ]

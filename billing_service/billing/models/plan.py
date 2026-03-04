@@ -22,7 +22,13 @@ class BaseModel(models.Model):
 class Plan(BaseModel):
     """
     Subscription plans: Starter, Professional, Business, Enterprise
+    Supports both individual and organization users
     """
+
+    PLAN_TYPES = [
+        ("individual", "Individual"),
+        ("organization", "Organization"),
+    ]
 
     PLAN_TIERS = [
         ("starter", "Starter"),
@@ -37,9 +43,12 @@ class Plan(BaseModel):
         ("yearly", "Yearly"),
     ]
 
+    # Plan Type (individual or organization)
+    plan_type = models.CharField(max_length=20, choices=PLAN_TYPES, default="organization")
+
     # Basic Info
-    name = models.CharField(max_length=100, unique=True)  # Starter, Professional, etc.
-    tier = models.CharField(max_length=50, choices=PLAN_TIERS, unique=True)
+    name = models.CharField(max_length=100)  # Starter, Professional, etc.
+    tier = models.CharField(max_length=50, choices=PLAN_TIERS)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
     is_featured = models.BooleanField(default=False)  # Featured on pricing page
@@ -84,13 +93,14 @@ class Plan(BaseModel):
     class Meta:
         verbose_name = "Plan"
         verbose_name_plural = "Plans"
-        ordering = ["price_monthly"]
+        ordering = ["plan_type", "price_monthly"]
+        unique_together = [["plan_type", "tier"]]
         indexes = [
-            models.Index(fields=["tier", "is_active"]),
+            models.Index(fields=["plan_type", "tier", "is_active"]),
         ]
 
     def __str__(self):
-        return f"{self.name} - KES {self.price_monthly}/month"
+        return f"{self.get_plan_type_display()} - {self.name} - KES {self.price_monthly}/month"
 
     def get_price_for_cycle(self, cycle: str) -> Decimal:
         """Get price for billing cycle with discount applied"""

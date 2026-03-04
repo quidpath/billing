@@ -1,10 +1,10 @@
 services:
   db:
     image: postgres:15
-    container_name: postgres_billing_prod
+    container_name: postgres_billing_stage
     restart: unless-stopped
     volumes:
-      - /mnt/ebs/postgres_data:/var/lib/postgresql/data
+      - /mnt/quidpath-billing-stage-data/postgres:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -20,10 +20,10 @@ services:
 
   backend:
     image: ${IMAGE_TAG}
-    container_name: billing-backend
+    container_name: billing-backend-stage
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8005:8000"
+      - "127.0.0.1:8012:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -37,26 +37,18 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       SECRET_KEY: ${SECRET_KEY}
       DJANGO_SETTINGS_MODULE: billing_service.settings.prod
-      DJANGO_ENV: prod
+      DJANGO_ENV: stage
     volumes:
-      - /mnt/ebs/media:/app/media
-      - /mnt/ebs/staticfiles:/app/staticfiles
+      - /mnt/quidpath-billing-stage-data/media:/app/media
+      - /mnt/quidpath-billing-stage-data/staticfiles:/app/staticfiles
     networks:
       - billing_network
       - quidpath_network
 
 networks:
   billing_network:
-    name: billing_prod_network
+    name: billing_stage_network
     driver: bridge
   quidpath_network:
     external: true
-    name: tmp_quidpath_network
-
-volumes:
-  postgres_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /mnt/ebs/postgres_data
+    name: stage_quidpath_network

@@ -5,6 +5,8 @@ URL configuration for billing service
 from django.urls import path
 
 from . import views
+from . import views_payment_simple
+from . import mpesa_webhook
 
 app_name = "billing"
 
@@ -41,10 +43,12 @@ urlpatterns = [
     path("promotions/validate/", views.validate_promotion, name="validate_promotion"),
     # Invoices
     path("invoices/", views.list_invoices, name="list_invoices"),
-    # Payments
-    path("payments/initiate/", views.initiate_payment, name="initiate_payment"),
+    # Payments - NEW SIMPLIFIED ENDPOINT
+    path("payments/initiate/", views_payment_simple.initiate_payment_simple, name="initiate_payment"),
     path("payments/status/", views.check_payment_status, name="check_payment_status"),
     path("payments/history/", views.payment_history, name="payment_history"),
     path("payments/webhook/", views.payment_webhook, name="payment_webhook"),
-    path("payments/webhook/mpesa/", views.mpesa_webhook, name="mpesa_webhook"),
+    
+    # M-Pesa Webhook
+    path("webhooks/mpesa/", mpesa_webhook.mpesa_callback, name="mpesa_callback"),
 ]

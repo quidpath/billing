@@ -28,7 +28,7 @@ services:
       POSTGRES_PASSWORD: devpass
       POSTGRES_DB: billing_devdb
     ports:
-      - "5433:5432"
+      - "5430:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:

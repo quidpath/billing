@@ -23,6 +23,33 @@ class PaymentService:
     """Service for processing payments"""
 
     @staticmethod
+    def get_payment_by_id(payment_id):
+        """Get payment by id. Raises Payment.DoesNotExist if not found."""
+        return Payment.objects.get(id=payment_id)
+
+    @staticmethod
+    def get_payment_by_checkout_request_id(checkout_request_id):
+        """Get payment by mpesa_checkout_request_id. Returns None if not found."""
+        return Payment.objects.filter(
+            mpesa_checkout_request_id=checkout_request_id
+        ).first()
+
+    @staticmethod
+    def get_payment_by_provider_reference(provider_reference):
+        """Get payment by provider_reference. Raises Payment.DoesNotExist if not found."""
+        return Payment.objects.get(provider_reference=provider_reference)
+
+    @staticmethod
+    def get_payments_by_corporate(corporate_id, order_by="-created_at", limit=None):
+        """Get payments for corporate. Returns queryset (use list() or slice)."""
+        qs = Payment.objects.filter(corporate_id=str(corporate_id)).select_related(
+            "invoice"
+        ).order_by(order_by)
+        if limit is not None:
+            return list(qs[:limit])
+        return list(qs)
+
+    @staticmethod
     def initiate_payment(
         invoice: Invoice,
         payment_method: str,

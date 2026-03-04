@@ -1,5 +1,6 @@
 """
-API views for billing service - SECURE: All endpoints require corporate_id for company tracing
+API views for billing service - SECURE: All endpoints require corporate_id for company tracing.
+Uses get_clean_data and ResponseProvider; DB access via services.
 """
 
 import json
@@ -9,9 +10,17 @@ import uuid
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import Invoice, Payment, PaymentVerification, Plan
-from .services import (InvoiceService, PaymentService, PromotionService,
-                       SubscriptionService, TrialService, VerificationService)
+from .models import Invoice, Payment, PaymentVerification
+from .services import (
+    InvoiceService,
+    PaymentService,
+    PlanService,
+    PromotionService,
+    SubscriptionService,
+    TrialService,
+    VerificationService,
+)
+from .utils.request_response import ResponseProvider, get_clean_data
 
 
 def validate_corporate_id(corporate_id: str) -> tuple[bool, str]:
@@ -28,8 +37,11 @@ def validate_corporate_id(corporate_id: str) -> tuple[bool, str]:
 @csrf_exempt
 def list_plans(request):
     """List all available plans - PUBLIC: No corporate_id required"""
+    not_allowed = ResponseProvider.method_not_allowed(["GET"])
+    if request.method != "GET":
+        return not_allowed
     try:
-        plans = Plan.objects.filter(is_active=True).order_by("price_monthly")
+        plans = PlanService.get_active_plans()
         plans_data = [
             {
                 "id": str(p.id),
@@ -48,88 +60,85 @@ def list_plans(request):
             }
             for p in plans
         ]
-        return JsonResponse(
-            {"success": True, "data": {"plans": plans_data}}, status=200
-        )
+        return ResponseProvider.success(data={"plans": plans_data})
     except Exception as e:
-        return JsonResponse({"success": False, "message": str(e)}, status=500)
+        return ResponseProvider.error(str(e), status=500)
 
 
 @csrf_exempt
 def create_trial(request):
     """Create 30-day free trial - SECURE: Requires corporate_id"""
+    data, err = get_clean_data(request, allowed_methods=["POST"], require_json_body=True)
+    if err is not None:
+        return err
     try:
-        data = json.loads(request.body) if request.body else {}
-        corporate_id = data.get("corporate_id")
-
+        corporate_id = data.get("corporate_id") if data else None
         is_valid, error_msg = validate_corporate_id(corporate_id)
         if not is_valid:
-            return JsonResponse({"success": False, "message": error_msg}, status=400)
+            return ResponseProvider.error(error_msg, status=400)
 
         trial = TrialService.create_trial_for_corporate(
             corporate_id=str(corporate_id),
-            corporate_name=data.get("corporate_name", ""),
-            plan_tier=data.get("plan_tier", "starter"),
+            corporate_name=(data or {}).get("corporate_name", ""),
+            plan_tier=(data or {}).get("plan_tier", "starter"),
         )
 
-        return JsonResponse(
-            {
-                "success": True,
-                "data": {
-                    "trial_id": str(trial.id),
-                    "corporate_id": str(trial.corporate_id),  # Return for verification
-                    "status": trial.status,
-                    "days_remaining": trial.days_remaining(),
-                    "end_date": trial.end_date.isoformat(),
-                },
+        return ResponseProvider.success(
+            data={
+                "trial_id": str(trial.id),
+                "corporate_id": str(trial.corporate_id),
+                "status": trial.status,
+                "days_remaining": trial.days_remaining(),
+                "end_date": trial.end_date.isoformat(),
             },
             status=201,
         )
     except Exception as e:
-        return JsonResponse({"success": False, "message": str(e)}, status=500)
+        return ResponseProvider.error(str(e), status=500)
 
 
 @csrf_exempt
 def get_trial_status(request):
     """Get trial status - SECURE: Requires corporate_id"""
+    data, err = get_clean_data(request, allowed_methods=["POST"], require_json_body=True)
+    if err is not None:
+        return err
     try:
-        data = json.loads(request.body) if request.body else {}
-        corporate_id = data.get("corporate_id")
-
+        corporate_id = (data or {}).get("corporate_id")
         is_valid, error_msg = validate_corporate_id(corporate_id)
         if not is_valid:
-            return JsonResponse({"success": False, "message": error_msg}, status=400)
+            return ResponseProvider.error(error_msg, status=400)
 
         trial_status = TrialService.check_trial_status(str(corporate_id))
-        # Add corporate_id to response for verification
         if trial_status.get("trial"):
             trial_status["trial"]["corporate_id"] = str(corporate_id)
 
-        return JsonResponse({"success": True, "data": trial_status}, status=200)
+        return ResponseProvider.success(data=trial_status)
     except Exception as e:
-        return JsonResponse({"success": False, "message": str(e)}, status=500)
+        return ResponseProvider.error(str(e), status=500)
 
 
 @csrf_exempt
 def create_subscription(request):
     """Create subscription - SECURE: Requires corporate_id, traces to company"""
+    data, err = get_clean_data(request, allowed_methods=["POST"], require_json_body=True)
+    if err is not None:
+        return err
     try:
-        data = json.loads(request.body) if request.body else {}
-        corporate_id = data.get("corporate_id")
-        corporate_name = data.get("corporate_name", "")
-        plan_tier = data.get("plan_tier")
-        billing_cycle = data.get("billing_cycle", "monthly")
-        additional_users = data.get("additional_users", 0)
-        promotion_code = data.get("promotion_code")
+        d = data or {}
+        corporate_id = d.get("corporate_id")
+        corporate_name = d.get("corporate_name", "")
+        plan_tier = d.get("plan_tier")
+        billing_cycle = d.get("billing_cycle", "monthly")
+        additional_users = d.get("additional_users", 0)
+        promotion_code = d.get("promotion_code")
 
         is_valid, error_msg = validate_corporate_id(corporate_id)
         if not is_valid:
-            return JsonResponse({"success": False, "message": error_msg}, status=400)
+            return ResponseProvider.error(error_msg, status=400)
 
         if not plan_tier:
-            return JsonResponse(
-                {"success": False, "message": "Plan tier is required"}, status=400
-            )
+            return ResponseProvider.error("Plan tier is required", status=400)
 
         subscription = SubscriptionService.create_subscription(
             corporate_id=str(corporate_id),
@@ -140,27 +149,21 @@ def create_subscription(request):
             promotion_code=promotion_code,
         )
 
-        # Create invoice
         invoice = InvoiceService.create_invoice_for_subscription(subscription)
 
-        return JsonResponse(
-            {
-                "success": True,
-                "data": {
-                    "subscription_id": str(subscription.id),
-                    "corporate_id": str(
-                        subscription.corporate_id
-                    ),  # Return for verification
-                    "invoice_id": str(invoice.id),
-                    "invoice_number": invoice.invoice_number,
-                    "total_amount": float(subscription.total_amount),
-                    "currency": subscription.currency,
-                },
+        return ResponseProvider.success(
+            data={
+                "subscription_id": str(subscription.id),
+                "corporate_id": str(subscription.corporate_id),
+                "invoice_id": str(invoice.id),
+                "invoice_number": invoice.invoice_number,
+                "total_amount": float(subscription.total_amount),
+                "currency": subscription.currency,
             },
             status=201,
         )
     except Exception as e:
-        return JsonResponse({"success": False, "message": str(e)}, status=500)
+        return ResponseProvider.error(str(e), status=500)
 
 
 @csrf_exempt
@@ -386,10 +389,9 @@ def initiate_payment(request):
                 status=400,
             )
 
-        if invoice_number:
-            invoice = Invoice.objects.filter(invoice_number=invoice_number).first()
-        else:
-            invoice = Invoice.objects.filter(id=invoice_id).first()
+        invoice = InvoiceService.get_invoice_by_number_or_id(
+            invoice_number=invoice_number, invoice_id=invoice_id
+        )
 
         if not invoice:
             logger.warning(
@@ -649,7 +651,7 @@ def payment_webhook(request):
         # Add corporate_id to result for tracing
         if result.get("success") and result.get("payment_id"):
             try:
-                payment = Payment.objects.get(id=result["payment_id"])
+                payment = PaymentService.get_payment_by_id(result["payment_id"])
                 result["data"] = result.get("data", {})
                 result["data"]["corporate_id"] = str(payment.corporate_id)
                 result["data"]["invoice_corporate_id"] = (
@@ -918,7 +920,7 @@ def check_payment_status(request):
 
         # Get payment
         try:
-            payment = Payment.objects.get(id=payment_id)
+            payment = PaymentService.get_payment_by_id(payment_id)
             logger.info(
                 f"Payment found: id={payment.id}, status={payment.status}, method={payment.payment_method}, provider_ref={payment.provider_reference}"
             )
@@ -1125,11 +1127,7 @@ def payment_history(request):
             return JsonResponse({"success": False, "message": error_msg}, status=400)
 
         # Get payments for this corporate
-        payments = (
-            Payment.objects.filter(corporate_id=str(corporate_id))
-            .select_related("invoice")
-            .order_by("-created_at")
-        )
+        payments = PaymentService.get_payments_by_corporate(str(corporate_id))
 
         # SECURITY: Verify all payments belong to the requested corporate
         payments_data = []
@@ -1230,11 +1228,9 @@ def admin_corporate_summary(request, corporate_id):
         ]  # Return last 10 invoices
 
         # Get payments
-        payments = Payment.objects.filter(corporate_id=str(corporate_id)).order_by(
-            "-created_at"
-        )[
-            :10
-        ]  # Last 10 payments
+        payments = PaymentService.get_payments_by_corporate(
+            str(corporate_id), limit=10
+        )
 
         payments_data = [
             {
@@ -1334,7 +1330,7 @@ def mpesa_webhook(request):
 
         # Find payment by CheckoutRequestID (stored in provider_reference)
         try:
-            payment = Payment.objects.get(provider_reference=checkout_request_id)
+            payment = PaymentService.get_payment_by_provider_reference(checkout_request_id)
         except Payment.DoesNotExist:
             logger.warning(
                 f"M-Pesa webhook: Payment not found for CheckoutRequestID: {checkout_request_id}"

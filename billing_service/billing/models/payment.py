@@ -14,6 +14,7 @@ from .plan import BaseModel
 class Payment(BaseModel):
     """
     Payment records for invoices
+    Supports both individual and organization payments
     """
 
     STATUS_CHOICES = [
@@ -41,9 +42,30 @@ class Payment(BaseModel):
         ("bank", "Bank"),
     ]
 
-    # Corporate/Organization
+    PAYMENT_TYPES = [
+        ("individual", "Individual"),
+        ("organization", "Organization"),
+    ]
+
+    # Payment Type
+    payment_type = models.CharField(
+        max_length=20,
+        choices=PAYMENT_TYPES,
+        default="organization"
+    )
+
+    # Corporate/Organization or Individual User
     corporate_id = models.UUIDField()
     corporate_name = models.CharField(max_length=255, blank=True)
+
+    # Subscription (optional - for subscription payments)
+    subscription = models.ForeignKey(
+        "Subscription",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="subscription_payments",
+    )
 
     # Invoice
     invoice = models.ForeignKey(
@@ -73,6 +95,15 @@ class Payment(BaseModel):
         default=dict, blank=True
     )  # Full response from provider
 
+    # M-Pesa specific fields
+    mpesa_checkout_request_id = models.CharField(max_length=255, blank=True, null=True)
+    mpesa_merchant_request_id = models.CharField(max_length=255, blank=True, null=True)
+    mpesa_receipt_number = models.CharField(max_length=255, blank=True, null=True)
+    mpesa_transaction_date = models.DateTimeField(blank=True, null=True)
+    
+    # Idempotency
+    idempotency_key = models.CharField(max_length=255, blank=True, null=True, unique=True)
+
     # Payment Details
     paid_at = models.DateTimeField(null=True, blank=True)
     receipt_pdf_url = models.URLField(blank=True, null=True)
@@ -89,8 +120,11 @@ class Payment(BaseModel):
         verbose_name_plural = "Payments"
         indexes = [
             models.Index(fields=["corporate_id", "status"]),
+            models.Index(fields=["payment_type", "status"]),
             models.Index(fields=["invoice", "status"]),
             models.Index(fields=["provider_reference"]),
+            models.Index(fields=["mpesa_checkout_request_id"]),
+            models.Index(fields=["idempotency_key"]),
             models.Index(fields=["payment_method", "status"]),
         ]
         ordering = ["-created_at"]

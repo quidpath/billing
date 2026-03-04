@@ -87,5 +87,13 @@ class JWTAuthenticationMiddleware:
 
     def _is_public_endpoint(self, path):
         """Check if endpoint is public (no authentication required)"""
-        public_paths = ["/health/", "/api/docs/", "/admin/", "/static/", "/media/"]
+        public_paths = [
+            "/health/", 
+            "/api/docs/", 
+            "/admin/", 
+            "/static/", 
+            "/media/",
+            "/api/billing/plans/",  # Allow public access to plans
+            "/api/billing/webhooks/",  # Allow webhooks
+        ]
         return any(path.startswith(p) for p in public_paths)

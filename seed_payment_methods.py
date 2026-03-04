@@ -120,16 +120,16 @@ def seed_payment_methods():
         ]
     )
 
-    print(f"\nM-Pesa: {'✅ Configured' if mpesa_configured else '❌ Not Configured'}")
+    print("\nM-Pesa: %s" % ("Configured" if mpesa_configured else "Not configured"))
     print(
-        f"Paystack: {'✅ Configured' if paystack_configured else '❌ Not Configured'}"
+        "Paystack: %s" % ("Configured" if paystack_configured else "Not configured")
     )
 
     if not mpesa_configured:
-        print("\n⚠️  M-Pesa is not configured. See MPESA_SETUP.md for instructions.")
+        print("\nM-Pesa is not configured. See MPESA_SETUP.md for instructions.")
 
     if not paystack_configured:
-        print("\n⚠️  Paystack is not configured. Card payments will not work.")
+        print("\nPaystack is not configured. Card payments will not work.")
 
     print("\n" + "=" * 80)
     print("PAYMENT METHODS DOCUMENTATION COMPLETE")

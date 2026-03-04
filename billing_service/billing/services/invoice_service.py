@@ -123,3 +123,12 @@ class InvoiceService:
                 corporate_id=corporate_id, status__in=["pending", "overdue"]
             ).order_by("-due_date")
         )
+
+    @staticmethod
+    def get_invoice_by_number_or_id(invoice_number=None, invoice_id=None):
+        """Get invoice by invoice_number or invoice_id. Returns None if not found."""
+        if invoice_number:
+            return Invoice.objects.filter(invoice_number=invoice_number).first()
+        if invoice_id:
+            return Invoice.objects.filter(id=invoice_id).first()
+        return None
