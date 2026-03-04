@@ -77,7 +77,7 @@ jobs:
         run: |
           declare -A secrets=()
           
-          # Stage uses its own DB (compose service name: qudb). Prod uses DATABASE_URL from secrets.
+          # Stage uses its own DB (compose service name: db). Prod uses DATABASE_URL from secrets.
           if [[ "$ENV_NAME" == "stage" ]]; then
             if [ -n "${{ secrets.DATABASE_URL_STAGE }}" ]; then
               secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL_STAGE }}"
@@ -87,24 +87,11 @@ jobs:
             secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER_STAGE }}"
             secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB_STAGE }}"
             secrets["POSTGRES_PASSWORD"]="${{ secrets.POSTGRES_PASSWORD_STAGE }}"
-            # App secrets: use _STAGE if set, else fallback to prod
             secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY_STAGE || secrets.SECRET_KEY }}"
             secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY_STAGE || secrets.JWT_SECRET_KEY }}"
-            # PESAWAY: use _STAGE if set, else fallback to prod
-            secrets["PESAWAY_API_KEY"]="${{ secrets.PESAWAY_API_KEY_STAGE || secrets.PESAWAY_API_KEY }}"
-            secrets["PESAWAY_SECRET_KEY"]="${{ secrets.PESAWAY_SECRET_KEY_STAGE || secrets.PESAWAY_SECRET_KEY }}"
-            secrets["PESAWAY_MERCHANT_ID"]="${{ secrets.PESAWAY_MERCHANT_ID_STAGE || secrets.PESAWAY_MERCHANT_ID }}"
-            secrets["PESAWAY_WEBHOOK_SECRET"]="${{ secrets.PESAWAY_WEBHOOK_SECRET_STAGE || secrets.PESAWAY_WEBHOOK_SECRET }}"
-            # M-Pesa: use _STAGE if set (e.g. sandbox), else fallback to prod
-            secrets["MPESA_CONSUMER_KEY"]="${{ secrets.MPESA_CONSUMER_KEY_STAGE || secrets.MPESA_CONSUMER_KEY }}"
-            secrets["MPESA_CONSUMER_SECRET"]="${{ secrets.MPESA_CONSUMER_SECRET_STAGE || secrets.MPESA_CONSUMER_SECRET }}"
-            secrets["MPESA_SHORTCODE"]="${{ secrets.MPESA_SHORTCODE_STAGE || secrets.MPESA_SHORTCODE }}"
-            secrets["MPESA_BUSINESS_SHORT_CODE"]="${{ secrets.MPESA_BUSINESS_SHORT_CODE_STAGE || secrets.MPESA_BUSINESS_SHORT_CODE }}"
-            secrets["MPESA_TILL_NUMBER"]="${{ secrets.MPESA_TILL_NUMBER_STAGE || secrets.MPESA_TILL_NUMBER }}"
-            secrets["MPESA_PASSKEY"]="${{ secrets.MPESA_PASSKEY_STAGE || secrets.MPESA_PASSKEY }}"
-            secrets["MPESA_CALLBACK_URL"]="${{ secrets.MPESA_CALLBACK_URL_STAGE || secrets.MPESA_CALLBACK_URL }}"
-            secrets["MPESA_TEST_MODE"]="${{ secrets.MPESA_TEST_MODE_STAGE || secrets.MPESA_TEST_MODE }}"
-            secrets["MPESA_ENVIRONMENT"]="${{ secrets.MPESA_ENVIRONMENT_STAGE || secrets.MPESA_ENVIRONMENT }}"
+            # M-Pesa & Pesaway: same live values for stage and prod; only callback URLs differ by env
+            secrets["MPESA_CALLBACK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/mpesa/"
+            secrets["PESAWAY_WEBHOOK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/pesaway/"
           else
             secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER }}"
             secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB }}"
@@ -112,20 +99,23 @@ jobs:
             secrets["POSTGRES_PASSWORD"]="${{ secrets.POSTGRES_PASSWORD }}"
             secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY }}"
             secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY }}"
-            secrets["PESAWAY_API_KEY"]="${{ secrets.PESAWAY_API_KEY }}"
-            secrets["PESAWAY_SECRET_KEY"]="${{ secrets.PESAWAY_SECRET_KEY }}"
-            secrets["PESAWAY_MERCHANT_ID"]="${{ secrets.PESAWAY_MERCHANT_ID }}"
-            secrets["PESAWAY_WEBHOOK_SECRET"]="${{ secrets.PESAWAY_WEBHOOK_SECRET }}"
-            secrets["MPESA_CONSUMER_KEY"]="${{ secrets.MPESA_CONSUMER_KEY }}"
-            secrets["MPESA_CONSUMER_SECRET"]="${{ secrets.MPESA_CONSUMER_SECRET }}"
-            secrets["MPESA_SHORTCODE"]="${{ secrets.MPESA_SHORTCODE }}"
-            secrets["MPESA_BUSINESS_SHORT_CODE"]="${{ secrets.MPESA_BUSINESS_SHORT_CODE }}"
-            secrets["MPESA_TILL_NUMBER"]="${{ secrets.MPESA_TILL_NUMBER }}"
-            secrets["MPESA_PASSKEY"]="${{ secrets.MPESA_PASSKEY }}"
             secrets["MPESA_CALLBACK_URL"]="${{ secrets.MPESA_CALLBACK_URL }}"
-            secrets["MPESA_TEST_MODE"]="${{ secrets.MPESA_TEST_MODE }}"
-            secrets["MPESA_ENVIRONMENT"]="${{ secrets.MPESA_ENVIRONMENT }}"
+            secrets["PESAWAY_WEBHOOK_URL"]="${{ secrets.PESAWAY_WEBHOOK_URL }}"
           fi
+          # Shared live M-Pesa and Pesaway (no _STAGE; same for stage and prod)
+          secrets["PESAWAY_API_KEY"]="${{ secrets.PESAWAY_API_KEY }}"
+          secrets["PESAWAY_SECRET_KEY"]="${{ secrets.PESAWAY_SECRET_KEY }}"
+          secrets["PESAWAY_MERCHANT_ID"]="${{ secrets.PESAWAY_MERCHANT_ID }}"
+          secrets["PESAWAY_WEBHOOK_SECRET"]="${{ secrets.PESAWAY_WEBHOOK_SECRET }}"
+          secrets["PESAWAY_TEST_MODE"]="${{ secrets.PESAWAY_TEST_MODE }}"
+          secrets["MPESA_CONSUMER_KEY"]="${{ secrets.MPESA_CONSUMER_KEY }}"
+          secrets["MPESA_CONSUMER_SECRET"]="${{ secrets.MPESA_CONSUMER_SECRET }}"
+          secrets["MPESA_SHORTCODE"]="${{ secrets.MPESA_SHORTCODE }}"
+          secrets["MPESA_BUSINESS_SHORT_CODE"]="${{ secrets.MPESA_BUSINESS_SHORT_CODE }}"
+          secrets["MPESA_TILL_NUMBER"]="${{ secrets.MPESA_TILL_NUMBER }}"
+          secrets["MPESA_PASSKEY"]="${{ secrets.MPESA_PASSKEY }}"
+          secrets["MPESA_TEST_MODE"]="${{ secrets.MPESA_TEST_MODE }}"
+          secrets["MPESA_ENVIRONMENT"]="${{ secrets.MPESA_ENVIRONMENT }}"
           
           json="{}"
           for key in "${!secrets[@]}"; do
