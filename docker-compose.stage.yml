@@ -9,11 +9,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB_STAGE}
       POSTGRES_USER: ${POSTGRES_USER_STAGE}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_STAGE}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER_STAGE} -d ${POSTGRES_DB_STAGE}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - billing_network
       - quidpath_network
