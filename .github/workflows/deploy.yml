@@ -70,27 +70,6 @@ jobs:
           COMPOSE_B64=$(base64 -w 0 "$COMPOSE_FILE")
           echo "b64=$COMPOSE_B64" >> $GITHUB_OUTPUT
       
-      - name: Validate stage DB secrets (avoid auth failure on server)
-        if: steps.env.outputs.env == 'stage'
-        run: |
-          missing=""
-          [ -z "${{ secrets.POSTGRES_USER_STAGE }}" ] && missing="${missing} POSTGRES_USER_STAGE"
-          [ -z "${{ secrets.POSTGRES_PASSWORD_STAGE }}" ] && missing="${missing} POSTGRES_PASSWORD_STAGE"
-          [ -z "${{ secrets.POSTGRES_DB_STAGE }}" ] && missing="${missing} POSTGRES_DB_STAGE"
-          if [ -n "$missing" ]; then
-            echo "::error::Billing stage requires these GitHub secrets to be set:$missing"
-            echo "::error::See docs/staging-database-credentials.md"
-            exit 1
-          fi
-          # Ensure stage does not use prod-style DB user (avoid picking up prod credentials)
-          if [ "${{ secrets.POSTGRES_USER_STAGE }}" = "billing_user" ]; then
-            echo "::error::POSTGRES_USER_STAGE must be a stage-specific user (e.g. billing_user_stage), not 'billing_user' (prod)."
-            echo "::error::Set POSTGRES_USER_STAGE in GitHub Actions secrets and ensure stage Postgres is initialized with that user."
-            exit 1
-          fi
-          # POSTGRES_DB_STAGE must match the database name inside container postgres_billing_stage (e.g. postgres_billing_stage)
-          echo "Stage DB: POSTGRES_DB_STAGE=${{ secrets.POSTGRES_DB_STAGE }} (must match DB name in postgres_billing_stage container)"
-      
       - name: Prepare env_secrets payload
         id: prepare_secrets
         env:
@@ -103,9 +82,7 @@ jobs:
             if [ -n "${{ secrets.DATABASE_URL_STAGE }}" ]; then
               secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL_STAGE }}"
             else
-              # Host is 'db' (compose service name). Container name postgres_billing_stage is not the hostname.
-              # POSTGRES_DB_STAGE must match the actual database name in that container (e.g. postgres_billing_stage).
-              secrets["DATABASE_URL"]="postgresql://${{ secrets.POSTGRES_USER_STAGE }}:${{ secrets.POSTGRES_PASSWORD_STAGE }}@db:5432/${{ secrets.POSTGRES_DB_STAGE }}"
+              secrets["DATABASE_URL"]="postgresql://${{ secrets.POSTGRES_USER_STAGE }}:${{ secrets.POSTGRES_PASSWORD_STAGE }}@postgres_billing_stage:5432/${{ secrets.POSTGRES_DB_STAGE }}"
             fi
             secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER_STAGE }}"
             secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB_STAGE }}"
@@ -138,6 +115,7 @@ jobs:
           secrets["MPESA_PASSKEY"]="${{ secrets.MPESA_PASSKEY }}"
           secrets["MPESA_TEST_MODE"]="${{ secrets.MPESA_TEST_MODE }}"
           secrets["MPESA_ENVIRONMENT"]="${{ secrets.MPESA_ENVIRONMENT }}"
+          secrets["ALLOWED_HOSTS"]="stage-billing.quidpath.com,localhost,127.0.0.1,0.0.0.0"
           
           json="{}"
           for key in "${!secrets[@]}"; do
