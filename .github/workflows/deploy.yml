@@ -82,6 +82,14 @@ jobs:
             echo "::error::See docs/staging-database-credentials.md"
             exit 1
           fi
+          # Ensure stage does not use prod-style DB user (avoid picking up prod credentials)
+          if [ "${{ secrets.POSTGRES_USER_STAGE }}" = "billing_user" ]; then
+            echo "::error::POSTGRES_USER_STAGE must be a stage-specific user (e.g. billing_user_stage), not 'billing_user' (prod)."
+            echo "::error::Set POSTGRES_USER_STAGE in GitHub Actions secrets and ensure stage Postgres is initialized with that user."
+            exit 1
+          fi
+          # POSTGRES_DB_STAGE must match the database name inside container postgres_billing_stage (e.g. postgres_billing_stage)
+          echo "Stage DB: POSTGRES_DB_STAGE=${{ secrets.POSTGRES_DB_STAGE }} (must match DB name in postgres_billing_stage container)"
       
       - name: Prepare env_secrets payload
         id: prepare_secrets
@@ -95,7 +103,9 @@ jobs:
             if [ -n "${{ secrets.DATABASE_URL_STAGE }}" ]; then
               secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL_STAGE }}"
             else
-              secrets["DATABASE_URL"]="postgresql://${{ secrets.POSTGRES_USER_STAGE }}:${{ secrets.POSTGRES_PASSWORD_STAGE }}@billing-backend-stage:5432/${{ secrets.POSTGRES_DB_STAGE }}"
+              # Host is 'db' (compose service name). Container name postgres_billing_stage is not the hostname.
+              # POSTGRES_DB_STAGE must match the actual database name in that container (e.g. postgres_billing_stage).
+              secrets["DATABASE_URL"]="postgresql://${{ secrets.POSTGRES_USER_STAGE }}:${{ secrets.POSTGRES_PASSWORD_STAGE }}@db:5432/${{ secrets.POSTGRES_DB_STAGE }}"
             fi
             secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER_STAGE }}"
             secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB_STAGE }}"
