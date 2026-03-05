@@ -95,16 +95,15 @@ jobs:
             if [ -n "${{ secrets.DATABASE_URL_STAGE }}" ]; then
               secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL_STAGE }}"
             else
-              secrets["DATABASE_URL"]="postgresql://${{ secrets.POSTGRES_USER_STAGE }}:${{ secrets.POSTGRES_PASSWORD_STAGE }}@postgres_billing_stage:5432/${{ secrets.POSTGRES_DB_STAGE }}"
+              secrets["DATABASE_URL"]="postgresql://${{ secrets.POSTGRES_USER_STAGE }}:${{ secrets.POSTGRES_PASSWORD_STAGE }}@billing-backend-stage:5432/${{ secrets.POSTGRES_DB_STAGE }}"
             fi
             secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER_STAGE }}"
             secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB_STAGE }}"
             secrets["POSTGRES_PASSWORD"]="${{ secrets.POSTGRES_PASSWORD_STAGE }}"
             secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY_STAGE || secrets.SECRET_KEY }}"
             secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY_STAGE || secrets.JWT_SECRET_KEY }}"
-            # M-Pesa & Pesaway: same live values for stage and prod; only callback URLs differ by env
-            secrets["MPESA_CALLBACK_URL"]="${{ secrets.MPESA_STAGE_CALLBACK_URL }}"
-            secrets["PESAWAY_WEBHOOK_URL"]="${{ secrets.PESAWAY_STAGE_WEBHOOK_URL }}"
+            secrets["MPESA_CALLBACK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/mpesa/"
+            secrets["PESAWAY_WEBHOOK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/pesaway/"
           else
             secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER }}"
             secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB }}"

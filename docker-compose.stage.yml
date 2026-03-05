@@ -4,7 +4,7 @@ services:
     container_name: postgres_billing_stage
     restart: unless-stopped
     volumes:
-      - /mnt/quidpath-billing-stage-data/postgres:/var/lib/postgresql/data
+      - /mnt/quidpath-stage-billing-data/postgres:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
