@@ -9,20 +9,11 @@ from .base import *
 logger = logging.getLogger(__name__)
 print("Using Production Settings")
 
-# DATABASE CONFIGURATION
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB") or os.getenv("POSTGRES_DB_STAGE", "billing_stage"),
-        "USER": os.getenv("POSTGRES_USER") or os.getenv("POSTGRES_USER_STAGE", "billing_user_stage"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD") or os.getenv("POSTGRES_PASSWORD_STAGE"),
-        "HOST": os.getenv("DB_HOST_STAGE", "postgres_billing_stage"), 
-        "PORT": "5432",
-        "OPTIONS": {
-            "sslmode": "disable",
-        },
-    },
-}
+# DATABASE: use DATABASE_URL only (set by deploy with host "db", same user/db as postgres container).
+# Do not override with POSTGRES_* so credentials stay in sync with the postgres container.
+if not os.environ.get("DATABASE_URL"):
+    raise ValueError("Stage requires DATABASE_URL (e.g. postgresql://USER:PASSWORD@db:5432/DB)")
+DATABASES["default"]["OPTIONS"] = {"sslmode": "disable"}
 
 # SECURITY SETTINGS
 DEBUG = False
