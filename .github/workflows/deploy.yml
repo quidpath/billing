@@ -70,6 +70,19 @@ jobs:
           COMPOSE_B64=$(base64 -w 0 "$COMPOSE_FILE")
           echo "b64=$COMPOSE_B64" >> $GITHUB_OUTPUT
       
+      - name: Validate stage DB secrets (avoid auth failure on server)
+        if: steps.env.outputs.env == 'stage'
+        run: |
+          missing=""
+          [ -z "${{ secrets.POSTGRES_USER_STAGE }}" ] && missing="${missing} POSTGRES_USER_STAGE"
+          [ -z "${{ secrets.POSTGRES_PASSWORD_STAGE }}" ] && missing="${missing} POSTGRES_PASSWORD_STAGE"
+          [ -z "${{ secrets.POSTGRES_DB_STAGE }}" ] && missing="${missing} POSTGRES_DB_STAGE"
+          if [ -n "$missing" ]; then
+            echo "::error::Billing stage requires these GitHub secrets to be set:$missing"
+            echo "::error::See docs/staging-database-credentials.md"
+            exit 1
+          fi
+      
       - name: Prepare env_secrets payload
         id: prepare_secrets
         env:
@@ -82,7 +95,7 @@ jobs:
             if [ -n "${{ secrets.DATABASE_URL_STAGE }}" ]; then
               secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL_STAGE }}"
             else
-              secrets["DATABASE_URL"]="postgresql://${{ secrets.POSTGRES_USER_STAGE }}:${{ secrets.POSTGRES_PASSWORD_STAGE }}@db:5432/${{ secrets.POSTGRES_DB_STAGE }}"
+              secrets["DATABASE_URL"]="postgresql://${{ secrets.POSTGRES_USER_STAGE }}:${{ secrets.POSTGRES_PASSWORD_STAGE }}@postgres_billing_stage:5432/${{ secrets.POSTGRES_DB_STAGE }}"
             fi
             secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER_STAGE }}"
             secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB_STAGE }}"
@@ -90,8 +103,8 @@ jobs:
             secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY_STAGE || secrets.SECRET_KEY }}"
             secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY_STAGE || secrets.JWT_SECRET_KEY }}"
             # M-Pesa & Pesaway: same live values for stage and prod; only callback URLs differ by env
-            secrets["MPESA_CALLBACK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/mpesa/"
-            secrets["PESAWAY_WEBHOOK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/pesaway/"
+            secrets["MPESA_CALLBACK_URL"]="${{ secrets.MPESA_STAGE_CALLBACK_URL }}"
+            secrets["PESAWAY_WEBHOOK_URL"]="${{ secrets.PESAWAY_STAGE_WEBHOOK_URL }}"
           else
             secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER }}"
             secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB }}"
