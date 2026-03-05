@@ -77,10 +77,8 @@ jobs:
         run: |
           declare -A secrets=()
           
-          # Stage uses its own DB. Compose service name is "db" - URL must use host "db" so backend can connect.
           if [[ "$ENV_NAME" == "stage" ]]; then
-            # Always build DATABASE_URL from POSTGRES_*_STAGE with host "db" (same credentials as postgres container).
-            secrets["DATABASE_URL"]="postgresql://${{ secrets.POSTGRES_USER_STAGE }}:${{ secrets.POSTGRES_PASSWORD_STAGE }}@db:5432/${{ secrets.POSTGRES_DB_STAGE }}"
+            secrets["DATABASE_URL"]="postgresql://${{ secrets.POSTGRES_USER_STAGE }}:${{ secrets.POSTGRES_PASSWORD_STAGE }}@postgres_billing_stage:5432/${{ secrets.POSTGRES_DB_STAGE }}"
             secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER_STAGE }}"
             secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB_STAGE }}"
             secrets["POSTGRES_PASSWORD"]="${{ secrets.POSTGRES_PASSWORD_STAGE }}"
