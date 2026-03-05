@@ -13,9 +13,9 @@ print("Using Production Settings")
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB_STAGE", "billing_stage"),
-        "USER": os.getenv("POSTGRES_USER_STAGE", "billing_user_stage"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD_STAGE"),
+        "NAME": os.getenv("POSTGRES_DB") or os.getenv("POSTGRES_DB_STAGE", "billing_stage"),
+        "USER": os.getenv("POSTGRES_USER") or os.getenv("POSTGRES_USER_STAGE", "billing_user_stage"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD") or os.getenv("POSTGRES_PASSWORD_STAGE"),
         "HOST": os.getenv("DB_HOST_STAGE", "postgres_billing_stage"), 
         "PORT": "5432",
         "OPTIONS": {

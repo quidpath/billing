@@ -6,9 +6,14 @@ services:
     volumes:
       - /mnt/quidpath-stage-billing-db-data/postgres:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: ${POSTGRES_DB_STAGE}
-      POSTGRES_USER: ${POSTGRES_USER_STAGE}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_STAGE}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - billing_network
       - quidpath_network
@@ -25,10 +30,10 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL_STAGE}
-      POSTGRES_DB: ${POSTGRES_DB_STAGE}
-      POSTGRES_USER: ${POSTGRES_USER_STAGE}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_STAGE}
+      DATABASE_URL: ${DATABASE_URL}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       SECRET_KEY: ${SECRET_KEY}
       DJANGO_SETTINGS_MODULE: billing_service.settings.stage
