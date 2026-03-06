@@ -13,12 +13,24 @@ fi
 
 cd "$APP_DIR"
 
-# Load environment variables from .env if it exists
+# Load .env but do NOT overwrite variables already set by Docker/compose/deploy.
+# This ensures stage deploy (DATABASE_URL, DJANGO_SETTINGS_MODULE, etc.) wins over a prod .env on the server.
 if [ -f .env ]; then
-  echo "Loading environment variables from .env"
-  set -o allexport
-  . .env
-  set +o allexport
+  echo "Loading environment variables from .env (deploy-set vars are preserved)"
+  while IFS= read -r line || [ -n "$line" ]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+      key="${BASH_REMATCH[1]}"
+      value="${BASH_REMATCH[2]}"
+      value="${value#\'}"; value="${value%\'}"
+      value="${value#\"}"; value="${value%\"}"
+      # Only set if not already set (e.g. by compose from deploy secrets)
+      if [[ -z "${!key:-}" ]]; then
+        export "$key=$value"
+      fi
+    fi
+  done < .env
 fi
 
 # Detect Python interpreter

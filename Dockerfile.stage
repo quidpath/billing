@@ -1,0 +1,28 @@
+# Stage build: same as Dockerfile but uses stage settings and stage database config.
+# Used when pushing to Development branch; prod uses Dockerfile (main/master).
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    gcc \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements/ /app/requirements/
+RUN pip install --no-cache-dir -r requirements/prod.txt
+
+COPY . /app
+
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+# Stage: use stage settings and stage database (secrets from deploy env / .env)
+ENV DJANGO_SETTINGS_MODULE=billing_service.settings.stage
+ENV DJANGO_ENV=stage
+
+EXPOSE 8000
+
+CMD ["/bin/bash", "/start.sh"]
