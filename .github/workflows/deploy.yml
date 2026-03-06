@@ -95,7 +95,7 @@ jobs:
           #   secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY }}"
           #   secrets["MPESA_CALLBACK_URL"]="${{ secrets.MPESA_CALLBACK_URL }}"
           #   secrets["PESAWAY_WEBHOOK_URL"]="${{ secrets.PESAWAY_WEBHOOK_URL }}"
-          fi
+          # fi
           # Shared live M-Pesa and Pesaway (no _STAGE; same for stage and prod)
           secrets["PESAWAY_API_KEY"]="${{ secrets.PESAWAY_API_KEY }}"
           secrets["PESAWAY_SECRET_KEY"]="${{ secrets.PESAWAY_SECRET_KEY }}"
