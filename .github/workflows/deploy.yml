@@ -77,24 +77,24 @@ jobs:
         run: |
           declare -A secrets=()
           
-          if [[ "$ENV_NAME" == "stage" ]]; then
-            secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL_STAGE }}"
-            secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER_STAGE }}"
-            secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB_STAGE }}"
-            secrets["POSTGRES_PASSWORD"]="${{ secrets.POSTGRES_PASSWORD_STAGE }}"
-            secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY_STAGE || secrets.SECRET_KEY }}"
-            secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY_STAGE || secrets.JWT_SECRET_KEY }}"
-            secrets["MPESA_CALLBACK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/mpesa/"
-            secrets["PESAWAY_WEBHOOK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/pesaway/"
-          else
-            secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER }}"
-            secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB }}"
-            secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL }}"
-            secrets["POSTGRES_PASSWORD"]="${{ secrets.POSTGRES_PASSWORD }}"
-            secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY }}"
-            secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY }}"
-            secrets["MPESA_CALLBACK_URL"]="${{ secrets.MPESA_CALLBACK_URL }}"
-            secrets["PESAWAY_WEBHOOK_URL"]="${{ secrets.PESAWAY_WEBHOOK_URL }}"
+          # if [[ "$ENV_NAME" == "stage" ]]; then
+          secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL_STAGE }}"
+          secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER_STAGE }}"
+          secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB_STAGE }}"
+          secrets["POSTGRES_PASSWORD"]="${{ secrets.POSTGRES_PASSWORD_STAGE }}"
+          secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY_STAGE || secrets.SECRET_KEY }}"
+          secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY_STAGE || secrets.JWT_SECRET_KEY }}"
+          secrets["MPESA_CALLBACK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/mpesa/"
+          secrets["PESAWAY_WEBHOOK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/pesaway/"
+          # else
+          #   secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER }}"
+          #   secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB }}"
+          #   secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL }}"
+          #   secrets["POSTGRES_PASSWORD"]="${{ secrets.POSTGRES_PASSWORD }}"
+          #   secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY }}"
+          #   secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY }}"
+          #   secrets["MPESA_CALLBACK_URL"]="${{ secrets.MPESA_CALLBACK_URL }}"
+          #   secrets["PESAWAY_WEBHOOK_URL"]="${{ secrets.PESAWAY_WEBHOOK_URL }}"
           fi
           # Shared live M-Pesa and Pesaway (no _STAGE; same for stage and prod)
           secrets["PESAWAY_API_KEY"]="${{ secrets.PESAWAY_API_KEY }}"
