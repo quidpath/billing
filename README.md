@@ -63,4 +63,12 @@ For stage to work without "Unauthorized" or "Connection refused":
 
 1. **BILLING_SERVICE_URL** – On the main backend (quidpath-backend), set this to the billing service URL. In Docker stage this is `http://billing-backend-stage:8000/api/billing` (container name from billing’s `docker-compose.stage.yml`, port 8000 inside the container; both stacks use network `stage_quidpath_network`).
 2. **BILLING_SERVICE_SECRET** – You **create** this yourself; it is not issued by any service. Generate a random value once (e.g. `openssl rand -hex 32`), then set the **same** value on **both** the main backend and billing (server `.env` or GitHub Actions secrets). The main backend sends it as `X-Service-Key` for server-to-server calls (e.g. create subscription, admin corporate summary). Billing accepts it only on those paths.
-3. **JWT_SECRET_KEY** – Set the **same** value on **both** the main backend and billing. User tokens are issued by the main backend; billing verifies them with this key. If they differ, frontend calls to `/api/billing/subscriptions/status/` and `/api/billing/payments/initiate/` return 401.
+3. **JWT_SECRET_KEY** – **Critical for logged-in users paying.** Set the **exact same** value in **both** repos: in **quidpath-backend** GitHub Secrets (so the main backend signs tokens) and in **billing** GitHub Secrets (so billing can verify them). If they differ, customers get **401 Unauthorized** on subscription status and payment initiate. Copy the value from the main backend repo into the billing repo so they match.
+
+### Troubleshooting: 401 Unauthorized when customer pays
+
+If a logged-in customer sees "Unauthorized" when opening billing or paying (subscriptions/status, payments/initiate):
+
+- **Cause:** Billing could not verify the user’s JWT.
+- **Fix:** Ensure **JWT_SECRET_KEY** is identical on the main backend and billing (same value in both deploy envs / GitHub Secrets). Redeploy both after fixing.
+- **Server-to-server 401** (subscriptions/create, admin corporate summary): Ensure **BILLING_SERVICE_SECRET** is set on both the main backend and billing and that the main backend sends it (it’s in compose; ensure the secret is in the deploy payload for both apps).

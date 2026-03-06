@@ -64,9 +64,10 @@ jobs:
           secrets["POSTGRES_PASSWORD"]="${{ secrets.POSTGRES_PASSWORD_STAGE }}"
           secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL_STAGE }}"
 
-          # Stage app secrets
-          secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY}}"
+          # Stage app secrets (JWT_SECRET_KEY must match main backend so user tokens verify)
+          secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY }}"
           secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY }}"
+          secrets["BILLING_SERVICE_SECRET"]="${{ secrets.BILLING_SERVICE_SECRET }}"
 
           # Stage webhook URLs
           secrets["MPESA_CALLBACK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/mpesa/"

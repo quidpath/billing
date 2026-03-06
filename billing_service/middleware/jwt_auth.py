@@ -103,7 +103,14 @@ class JWTAuthenticationMiddleware:
         except jwt.ExpiredSignatureError:
             return JsonResponse({"error": "Token has expired"}, status=401)
         except jwt.InvalidTokenError as e:
-            return JsonResponse({"error": f"Invalid token: {str(e)}"}, status=401)
+            return JsonResponse(
+                {
+                    "error": "Invalid token",
+                    "detail": str(e),
+                    "hint": "Ensure JWT_SECRET_KEY on this service matches the main backend (quidpath-backend).",
+                },
+                status=401,
+            )
         except Exception as e:
             logger.error(f"Authentication failed: {e}")
             return JsonResponse(
