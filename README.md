@@ -56,3 +56,11 @@ Add these in the billing repo: **Settings → Secrets and variables → Actions*
 Safaricom will send **POST** requests to this URL with the STK callback payload. The billing app accepts them at `webhooks/mpesa/` (no auth; validate using `CheckoutRequestID` and payment record).
 
 **Tip:** You can set `MPESA_SHORTCODE` and `MPESA_BUSINESS_SHORT_CODE` to the same value if you use one Paybill. Set `MPESA_TILL_NUMBER` for Till-based STK (CustomerBuyGoodsOnline).
+
+### Stage: Main backend ↔ Billing
+
+For stage to work without "Unauthorized" or "Connection refused":
+
+1. **BILLING_SERVICE_URL** – On the main backend (quidpath-backend), set this to the billing service URL. In Docker stage this is `http://billing-backend-stage:8000/api/billing` (container name from billing’s `docker-compose.stage.yml`, port 8000 inside the container; both stacks use network `stage_quidpath_network`).
+2. **BILLING_SERVICE_SECRET** – You **create** this yourself; it is not issued by any service. Generate a random value once (e.g. `openssl rand -hex 32`), then set the **same** value on **both** the main backend and billing (server `.env` or GitHub Actions secrets). The main backend sends it as `X-Service-Key` for server-to-server calls (e.g. create subscription, admin corporate summary). Billing accepts it only on those paths.
+3. **JWT_SECRET_KEY** – Set the **same** value on **both** the main backend and billing. User tokens are issued by the main backend; billing verifies them with this key. If they differ, frontend calls to `/api/billing/subscriptions/status/` and `/api/billing/payments/initiate/` return 401.

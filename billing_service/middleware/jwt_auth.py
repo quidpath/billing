@@ -1,9 +1,11 @@
 """
 JWT Authentication Middleware for Billing Service
-Validates JWT tokens and enriches request with user data
+Validates JWT tokens and enriches request with user data.
+Allows server-to-server calls with X-Service-Key for backend-only endpoints.
 """
 
 import logging
+import os
 
 import jwt
 from django.conf import settings
@@ -12,6 +14,15 @@ from django.http import JsonResponse
 from billing_service.services.user_cache_service import UserCacheService
 
 logger = logging.getLogger(__name__)
+
+# Paths the main backend calls without a user JWT (server-to-server)
+SERVICE_TO_SERVICE_PATHS = [
+    "/api/billing/subscriptions/create/",
+    "/api/billing/trials/create/",
+    "/api/billing/trials/status/",
+    "/api/billing/access/check/",
+    "/api/admin/billing/",  # admin corporate summary etc.
+]
 
 
 class JWTAuthenticationMiddleware:
@@ -25,6 +36,20 @@ class JWTAuthenticationMiddleware:
         # Skip authentication for public endpoints
         if self._is_public_endpoint(request.path):
             return self.get_response(request)
+
+        # Server-to-server: allow X-Service-Key if path is backend-only and secret matches
+        service_secret = os.environ.get("BILLING_SERVICE_SECRET") or getattr(
+            settings, "BILLING_SERVICE_SECRET", ""
+        )
+        if service_secret and self._is_service_to_service_path(request.path):
+            key = request.META.get("HTTP_X_SERVICE_KEY", "").strip()
+            if key and key == service_secret:
+                request.service_call = True
+                request.user_id = None
+                request.corporate_id = None
+                request.user_data = {}
+                request.corporate_data = None
+                return self.get_response(request)
 
         # Extract token from Authorization header
         auth_header = request.META.get("HTTP_AUTHORIZATION", "")
@@ -43,6 +68,8 @@ class JWTAuthenticationMiddleware:
                 token, secret_key, algorithms=["HS256"], issuer="quidpath-backend"
             )
 
+            # Mark as user call (not service-to-service)
+            request.service_call = False
             # Attach basic user data from token to request
             request.user_id = payload["user_id"]
             request.corporate_id = payload.get("corporate_id")
@@ -88,12 +115,16 @@ class JWTAuthenticationMiddleware:
     def _is_public_endpoint(self, path):
         """Check if endpoint is public (no authentication required)"""
         public_paths = [
-            "/health/", 
-            "/api/docs/", 
-            "/admin/", 
-            "/static/", 
+            "/health/",
+            "/api/docs/",
+            "/admin/",
+            "/static/",
             "/media/",
             "/api/billing/plans/",  # Allow public access to plans
             "/api/billing/webhooks/",  # Allow webhooks
         ]
         return any(path.startswith(p) for p in public_paths)
+
+    def _is_service_to_service_path(self, path):
+        """Check if path is allowed for X-Service-Key (backend-only)"""
+        return any(path.startswith(p) for p in SERVICE_TO_SERVICE_PATHS)

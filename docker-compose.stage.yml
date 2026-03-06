@@ -37,6 +37,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       SECRET_KEY: ${SECRET_KEY}
+      BILLING_SERVICE_SECRET: ${BILLING_SERVICE_SECRET}
       DJANGO_SETTINGS_MODULE: billing_service.settings.stage
       DJANGO_ENV: stage
     volumes:

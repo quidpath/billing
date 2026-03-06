@@ -41,6 +41,7 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     "https://stage.quidpath.com",
     "https://www.stage.quidpath.com",
+    "https://stage-api.quidpath.com",
 ]
 
 CORS_ALLOW_CREDENTIALS = True

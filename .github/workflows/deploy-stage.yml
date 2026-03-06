@@ -86,6 +86,8 @@ jobs:
           secrets["MPESA_PASSKEY"]="${{ secrets.MPESA_PASSKEY }}"
           secrets["MPESA_TEST_MODE"]="${{ secrets.MPESA_TEST_MODE }}"
           secrets["MPESA_ENVIRONMENT"]="${{ secrets.MPESA_ENVIRONMENT }}"
+          secrets["SMTP_USER"]="${{ secrets.SMTP_USER }}"
+          secrets["SMTP_PASSWORD"]="${{ secrets.SMTP_PASSWORD }}"
 
           # Stage allowed hosts
           secrets["ALLOWED_HOSTS"]="stage-billing.quidpath.com,localhost,127.0.0.1,0.0.0.0"
