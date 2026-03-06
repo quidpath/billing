@@ -14,8 +14,10 @@ class BillingAuthMiddleware(MiddlewareMixin):
     """
 
     def process_request(self, request):
-        # Skip authentication for webhooks and public endpoints
+        # Skip for webhooks, public endpoints, and admin (corporate_id is in URL)
         if request.path.startswith("/api/billing/payments/webhook/"):
+            return None
+        if request.path.startswith("/api/admin/billing/"):
             return None
 
         # For POST requests, extract corporate_id from body

@@ -1176,10 +1176,12 @@ def admin_corporate_summary(request, corporate_id):
     Used by Django admin panel to display billing information
     """
     try:
-        # Validate corporate_id
-        is_valid, error_msg = validate_corporate_id(corporate_id)
+        # Normalize and validate corporate_id (strip in case of encoding/whitespace)
+        raw_id = (corporate_id or "").strip()
+        is_valid, error_msg = validate_corporate_id(raw_id)
         if not is_valid:
             return JsonResponse({"success": False, "message": error_msg}, status=400)
+        corporate_id = raw_id
 
         # Get trial information
         trial_data = None
