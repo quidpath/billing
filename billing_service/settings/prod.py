@@ -10,19 +10,34 @@ logger = logging.getLogger(__name__)
 print("Using Production Settings")
 
 # DATABASE CONFIGURATION
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "billing_prod"),
-        "USER": os.getenv("POSTGRES_USER", "billing_user"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-        "HOST": os.getenv("DB_HOST", "db"),  # Use service name from docker-compose
-        "PORT": "5432",
-        "OPTIONS": {
-            "sslmode": "disable",
+# Use DATABASE_URL when set (e.g. from deploy secrets); otherwise require POSTGRES_* from env (no hardcoded defaults).
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=os.environ.get("DATABASE_URL"),
+            conn_max_age=600,
+        )
+    }
+    DATABASES["default"]["OPTIONS"] = {"sslmode": "disable"}
+else:
+    _user = os.getenv("POSTGRES_USER")
+    _db = os.getenv("POSTGRES_DB")
+    if not _user or not _db:
+        raise ValueError(
+            "Production requires DATABASE_URL or both POSTGRES_USER and POSTGRES_DB from environment (e.g. deploy secrets). "
+            "Do not rely on hardcoded defaults."
+        )
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": _db,
+            "USER": _user,
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+            "HOST": os.getenv("DB_HOST", "db"),
+            "PORT": "5432",
+            "OPTIONS": {"sslmode": "disable"},
         },
-    },
-}
+    }
 
 # SECURITY SETTINGS
 DEBUG = False

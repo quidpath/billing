@@ -14,6 +14,7 @@ fi
 cd "$APP_DIR"
 
 # Load environment variables from .env without sourcing (avoids shell interpreting $()& etc.)
+# Variables already set by Docker/compose/deploy take precedence (do not overwrite).
 if [ -f .env ]; then
   echo "Loading environment variables from .env"
   while IFS= read -r line || [ -n "$line" ]; do
@@ -25,7 +26,10 @@ if [ -f .env ]; then
       # Strip surrounding single or double quotes so JWT_SECRET_KEY etc. work
       value="${value#\'}"; value="${value%\'}"
       value="${value#\"}"; value="${value%\"}"
-      export "$key=$value"
+      # Do not overwrite if already set (e.g. by docker-compose or deploy secrets)
+      if [[ -z "${!key}" ]]; then
+        export "$key=$value"
+      fi
     fi
   done < .env
 fi
