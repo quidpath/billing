@@ -64,8 +64,8 @@ jobs:
           secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL_STAGE }}"
 
           # Stage app secrets
-          secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY_STAGE }}"
-          secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY_STAGE }}"
+          secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY}}"
+          secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY }}"
 
           # Stage webhook URLs
           secrets["MPESA_CALLBACK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/mpesa/"
@@ -103,7 +103,7 @@ jobs:
       - name: Trigger Stage Deployment in Infra Repo
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.INFRA_PAT_STAGE }}
+          token: ${{ secrets.INFRA_PAT }}
           repository: stevendegwa/infra
           event-type: deploy-app
           client-payload: |
