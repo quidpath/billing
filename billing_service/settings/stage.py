@@ -20,25 +20,27 @@ DEBUG = False
 
 # Load allowed hosts from environment (comma-separated)
 ALLOWED_HOSTS = os.environ.get(
-    "ALLOWED_HOSTS", "stage-api.quidpath.com,stage-quidpath.com,www.stage-quidpath.com,localhost,127.0.0.1,0.0.0.0"
+    "ALLOWED_HOSTS", "stage-billing.quidpath.com,stage.quidpath.com,www.stage.quidpath.com,localhost,127.0.0.1,0.0.0.0"
 ).split(",")
 
-# CSRF & CORS CONFIGURATION
+# CSRF & CORS CONFIGURATION (stage frontend: https://stage.quidpath.com)
 _env_csrf = os.environ.get("CSRF_TRUSTED_ORIGINS", "").strip()
 if _env_csrf:
     CSRF_TRUSTED_ORIGINS = [o.strip() for o in _env_csrf.split(",") if o.strip()]
 else:
+    # Only known stage hosts; no wildcard to avoid trusting unknown subdomains
     CSRF_TRUSTED_ORIGINS = [
-        "https://stage-quidpath.com",
-        "https://www.stage-quidpath.com",
-        "https://*.stage-quidpath.com",
+        "https://stage.quidpath.com",
+        "https://www.stage.quidpath.com",
+        "https://stage-billing.quidpath.com",
     ]
 
 CORS_ALLOW_ALL_ORIGINS = False
 
+# Allow browser requests from the stage frontend so "failed to fetch" is avoided
 CORS_ALLOWED_ORIGINS = [
-    "https://stage-quidpath.com",
-    "https://www.stage-quidpath.com",
+    "https://stage.quidpath.com",
+    "https://www.stage.quidpath.com",
 ]
 
 CORS_ALLOW_CREDENTIALS = True

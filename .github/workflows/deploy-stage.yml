@@ -1,102 +1,77 @@
-name: Build Image & Trigger Deployment
+name: Build Stage Image & Deploy (Billing)
 
 on:
   push:
-    branches: ["Development", "master"]
+    branches: ["Development"]
 
 jobs:
   build-and-trigger:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
+
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Determine environment & select compose file
-        id: env
-        run: |
-          if [[ "${{ github.ref_name }}" == "main" || "${{ github.ref_name }}" == "master" ]]; then
-            echo "env=prod" >> $GITHUB_OUTPUT
-            echo "compose_file=docker-compose.yml" >> $GITHUB_OUTPUT
-          else
-            echo "env=stage" >> $GITHUB_OUTPUT
-            echo "compose_file=docker-compose.stage.yml" >> $GITHUB_OUTPUT
-          fi
-      
+
       - name: Generate Docker Image Tag
         id: tag
         run: |
           IMAGE_NAME="quidpath_billing"
           TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
-          ENV_NAME="${{ steps.env.outputs.env }}"
-          
-          # Include environment in tag for clarity and safety
-          IMAGE_TAG="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME:${ENV_NAME}-${TIMESTAMP}"
-          
+          IMAGE_TAG="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME:stage-${TIMESTAMP}"
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
           echo "Generated Docker image tag: $IMAGE_TAG"
-      
-      - name: Build and Push Docker Image
+
+      - name: Build and Push Docker Image (Stage)
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: ${{ steps.tag.outputs.image_tag }}
           platforms: linux/amd64,linux/arm64/v8
-      
-      - name: Encode selected docker-compose file
+
+      - name: Encode docker-compose.stage.yml
         id: compose
         run: |
-          COMPOSE_FILE="${{ steps.env.outputs.compose_file }}"
-          
-          if [ ! -f "$COMPOSE_FILE" ]; then
-            echo "Error: $COMPOSE_FILE not found in repository!"
+          if [ ! -f "docker-compose.stage.yml" ]; then
+            echo "Error: docker-compose.stage.yml not found!"
             exit 1
           fi
-          
-          COMPOSE_B64=$(base64 -w 0 "$COMPOSE_FILE")
+          COMPOSE_B64=$(base64 -w 0 docker-compose.stage.yml)
           echo "b64=$COMPOSE_B64" >> $GITHUB_OUTPUT
-      
-      - name: Prepare env_secrets payload
+
+      - name: Prepare env_secrets payload (Stage secrets only)
         id: prepare_secrets
-        env:
-          ENV_NAME: ${{ steps.env.outputs.env }}
         run: |
           declare -A secrets=()
-          
-          # if [[ "$ENV_NAME" == "stage" ]]; then
-          secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL_STAGE }}"
+
+          # Stage database (set DATABASE_URL_STAGE if you use a full URL, or rely on POSTGRES_*_STAGE)
           secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER_STAGE }}"
           secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB_STAGE }}"
           secrets["POSTGRES_PASSWORD"]="${{ secrets.POSTGRES_PASSWORD_STAGE }}"
-          secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY_STAGE || secrets.SECRET_KEY }}"
-          secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY_STAGE || secrets.JWT_SECRET_KEY }}"
+          secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL_STAGE }}"
+
+          # Stage app secrets
+          secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY_STAGE }}"
+          secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY_STAGE }}"
+
+          # Stage webhook URLs
           secrets["MPESA_CALLBACK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/mpesa/"
           secrets["PESAWAY_WEBHOOK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/pesaway/"
-          # else
-          #   secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER }}"
-          #   secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB }}"
-          #   secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL }}"
-          #   secrets["POSTGRES_PASSWORD"]="${{ secrets.POSTGRES_PASSWORD }}"
-          #   secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY }}"
-          #   secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY }}"
-          #   secrets["MPESA_CALLBACK_URL"]="${{ secrets.MPESA_CALLBACK_URL }}"
-          #   secrets["PESAWAY_WEBHOOK_URL"]="${{ secrets.PESAWAY_WEBHOOK_URL }}"
-          # fi
-          # Shared live M-Pesa and Pesaway (no _STAGE; same for stage and prod)
+
+          # Payment provider (use stage variants if you have them, else same as prod)
           secrets["PESAWAY_API_KEY"]="${{ secrets.PESAWAY_API_KEY }}"
           secrets["PESAWAY_SECRET_KEY"]="${{ secrets.PESAWAY_SECRET_KEY }}"
           secrets["PESAWAY_MERCHANT_ID"]="${{ secrets.PESAWAY_MERCHANT_ID }}"
@@ -110,8 +85,10 @@ jobs:
           secrets["MPESA_PASSKEY"]="${{ secrets.MPESA_PASSKEY }}"
           secrets["MPESA_TEST_MODE"]="${{ secrets.MPESA_TEST_MODE }}"
           secrets["MPESA_ENVIRONMENT"]="${{ secrets.MPESA_ENVIRONMENT }}"
+
+          # Stage allowed hosts
           secrets["ALLOWED_HOSTS"]="stage-billing.quidpath.com,localhost,127.0.0.1,0.0.0.0"
-          
+
           json="{}"
           for key in "${!secrets[@]}"; do
             value="${secrets[$key]}"
@@ -119,21 +96,21 @@ jobs:
               json=$(echo "$json" | jq --arg k "$key" --arg v "$value" '.[$k] = $v')
             fi
           done
-          
+
           compact=$(echo "$json" | jq -c .)
           echo "secrets_json=$compact" >> $GITHUB_OUTPUT
-      
-      - name: Trigger Deployment in Infra Repo
+
+      - name: Trigger Stage Deployment in Infra Repo
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.INFRA_PAT }}
+          token: ${{ secrets.INFRA_PAT_STAGE }}
           repository: stevendegwa/infra
           event-type: deploy-app
           client-payload: |
             {
               "app_repo": "${{ github.repository }}",
               "branch": "${{ github.ref_name }}",
-              "env": "${{ steps.env.outputs.env }}",
+              "env": "stage",
               "sha": "${{ github.sha }}",
               "image_tag": "${{ steps.tag.outputs.image_tag }}",
               "docker_compose_b64": "${{ steps.compose.outputs.b64 }}",
