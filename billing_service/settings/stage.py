@@ -19,11 +19,11 @@ DATABASES["default"]["OPTIONS"] = {"sslmode": "disable"}
 DEBUG = False
 
 # Load allowed hosts from environment (comma-separated).
-# Include billing-backend-stage so main backend can call this service by container name.
-ALLOWED_HOSTS = os.environ.get(
-    "ALLOWED_HOSTS",
-    "billing-backend-stage,stage-billing.quidpath.com,stage.quidpath.com,www.stage.quidpath.com,localhost,127.0.0.1,0.0.0.0",
-).split(",")
+# Always include billing-backend-stage so main backend can call this service by container name.
+_default_hosts = "stage-billing.quidpath.com,stage.quidpath.com,www.stage.quidpath.com,localhost,127.0.0.1,0.0.0.0"
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", _default_hosts).split(",") if h.strip()]
+if "billing-backend-stage" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("billing-backend-stage")
 
 # CSRF & CORS CONFIGURATION (stage frontend: https://stage.quidpath.com)
 _env_csrf = os.environ.get("CSRF_TRUSTED_ORIGINS", "").strip()
