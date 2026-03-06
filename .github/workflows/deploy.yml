@@ -78,7 +78,7 @@ jobs:
           declare -A secrets=()
           
           if [[ "$ENV_NAME" == "stage" ]]; then
-            secrets["DATABASE_URL"]="postgresql://${{ secrets.POSTGRES_USER_STAGE }}:${{ secrets.POSTGRES_PASSWORD_STAGE }}@postgres_billing_stage:5432/${{ secrets.POSTGRES_DB_STAGE }}"
+            secrets["DATABASE_URL"]="${{ secrets.DATABASE_URL_STAGE }}"
             secrets["POSTGRES_USER"]="${{ secrets.POSTGRES_USER_STAGE }}"
             secrets["POSTGRES_DB"]="${{ secrets.POSTGRES_DB_STAGE }}"
             secrets["POSTGRES_PASSWORD"]="${{ secrets.POSTGRES_PASSWORD_STAGE }}"

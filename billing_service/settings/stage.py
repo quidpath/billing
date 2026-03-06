@@ -7,7 +7,7 @@ from corsheaders.defaults import default_headers
 from .base import *
 
 logger = logging.getLogger(__name__)
-print("Using Production Settings")
+print("Using Stage Settings")
 
 # DATABASE: use DATABASE_URL only (set by deploy with host "db", same user/db as postgres container).
 # Do not override with POSTGRES_* so credentials stay in sync with the postgres container.

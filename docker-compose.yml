@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:15
+    image: postgres:17
     container_name: postgres_billing_prod
     restart: unless-stopped
     volumes:
