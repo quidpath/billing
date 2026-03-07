@@ -52,13 +52,17 @@ class JWTAuthenticationMiddleware:
                 return self.get_response(request)
 
         # Extract token from Authorization header
-        auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+        auth_header = request.META.get("HTTP_AUTHORIZATION", "").strip()
         if not auth_header.startswith("Bearer "):
             return JsonResponse(
                 {"error": "Missing or invalid authorization header"}, status=401
             )
 
-        token = auth_header.split(" ")[1]
+        token = auth_header.split(" ", 1)[1].strip()
+        if not token:
+            return JsonResponse(
+                {"error": "Missing or invalid authorization header"}, status=401
+            )
 
         try:
             # Decode and validate token
