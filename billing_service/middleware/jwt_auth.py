@@ -7,7 +7,7 @@ Allows server-to-server calls with X-Service-Key for backend-only endpoints.
 import logging
 import os
 
-import jwt
+import jwt   
 from django.conf import settings
 from django.http import JsonResponse
 
