@@ -20,7 +20,7 @@ services:
 
   backend:
     image: ${IMAGE_TAG}
-    container_name: billing-backend
+    container_name: billing-backend-prod
     restart: unless-stopped
     ports:
       - "127.0.0.1:8007:8000"
