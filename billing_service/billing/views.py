@@ -276,7 +276,7 @@ def list_invoices(request):
     """List invoices - SECURE: Requires corporate_id, only returns company's invoices"""
     try:
         data = json.loads(request.body) if request.body else {}
-        corporate_id = data.get("corporate_id")
+        corporate_id = data.get("corporate_id") or request.GET.get("corporate_id") or getattr(request, "corporate_id", None)
 
         is_valid, error_msg = validate_corporate_id(corporate_id)
         if not is_valid:

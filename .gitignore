@@ -46,6 +46,7 @@ local_settings.py
 .env
 .env.*
 !.env.example
+!.env.stage
 .envrc
 
 # IDE - VSCode
@@ -303,3 +304,8 @@ $RECYCLE.BIN/
 seed_payment_methods.py
 seed_plans.py
 create_verification_migration.py
+gunicorn.ctl
+__pycache__/
+*.pyc
+.env
+.env.dev

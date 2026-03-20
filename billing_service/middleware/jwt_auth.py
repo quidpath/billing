@@ -54,6 +54,12 @@ class JWTAuthenticationMiddleware:
         # Extract token from Authorization header
         auth_header = request.META.get("HTTP_AUTHORIZATION", "").strip()
         if not auth_header.startswith("Bearer "):
+            has_any = bool(request.META.get("HTTP_AUTHORIZATION"))
+            logger.warning(
+                "Auth rejected for %s: header %s",
+                request.path,
+                "present but not Bearer" if has_any else "missing",
+            )
             return JsonResponse(
                 {"error": "Missing or invalid authorization header"}, status=401
             )

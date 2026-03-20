@@ -53,7 +53,7 @@ echo " Collecting static files..."
 $PYTHON manage.py collectstatic --noinput
 
 echo " Creating superuser (if not exists)..."
-$PYTHON manage.py create_superuser
+$PYTHON manage.py createsuperuser --noinput || true
 
 echo "Starting Gunicorn server..."
 exec gunicorn billing_service.wsgi:application \
