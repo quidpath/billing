@@ -45,8 +45,6 @@ local_settings.py
 # Environment variables
 .env
 .env.*
-!.env.example
-!.env.stage
 .envrc
 
 # IDE - VSCode
@@ -309,3 +307,5 @@ __pycache__/
 *.pyc
 .env
 .env.dev
+.env.*
+.env.stage
