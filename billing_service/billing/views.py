@@ -36,17 +36,19 @@ def validate_corporate_id(corporate_id: str) -> tuple[bool, str]:
 
 @csrf_exempt
 def list_plans(request):
-    """List all available plans - PUBLIC: No corporate_id required"""
+    """List available plans - PUBLIC: No corporate_id required. Filter by ?type=individual|organization"""
     not_allowed = ResponseProvider.method_not_allowed(["GET"])
     if request.method != "GET":
         return not_allowed
     try:
-        plans = PlanService.get_active_plans()
+        plan_type = request.GET.get("type") or request.GET.get("plan_type")
+        plans = PlanService.get_active_plans(plan_type=plan_type)
         plans_data = [
             {
                 "id": str(p.id),
                 "name": p.name,
                 "tier": p.tier,
+                "plan_type": p.plan_type,
                 "description": p.description,
                 "price_monthly": float(p.price_monthly),
                 "price_quarterly": (
@@ -60,7 +62,7 @@ def list_plans(request):
             }
             for p in plans
         ]
-        return ResponseProvider.success(data={"plans": plans_data})
+        return ResponseProvider.success(data={"plans": plans_data, "count": len(plans_data)})
     except Exception as e:
         return ResponseProvider.error(str(e), status=500)
 
@@ -781,7 +783,7 @@ def check_access(request):
 
         # Check for active trial
         trial_status = TrialService.check_trial_status(str(corporate_id))
-        if trial_status.get("has_active_trial"):
+        if trial_status.get("has_trial") and trial_status.get("trial", {}).get("is_active"):
             trial = trial_status.get("trial", {})
             return JsonResponse(
                 {
@@ -839,9 +841,9 @@ def check_access(request):
             )
 
         # Check if trial expired
-        if trial_status.get("trial"):
+        if trial_status.get("has_trial"):
             trial = trial_status.get("trial", {})
-            if trial.get("status") == "expired":
+            if trial.get("is_expired") or trial.get("status") == "expired":
                 return JsonResponse(
                     {
                         "success": True,

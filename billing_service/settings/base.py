@@ -100,6 +100,8 @@ SERVICE_API_KEY = os.environ.get("SERVICE_API_KEY", "")
 
 # Webhook Configuration
 BILLING_WEBHOOK_SECRET = os.environ.get("BILLING_WEBHOOK_SECRET", "")
+# Shared secret for service-to-service calls (X-Service-Key header)
+BILLING_SERVICE_SECRET = os.environ.get("BILLING_SERVICE_SECRET", "")
 
 # Cache Configuration
 CACHES = {

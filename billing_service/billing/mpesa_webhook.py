@@ -96,40 +96,62 @@ def mpesa_callback(request):
                 payment.subscription.status = "active"
                 payment.subscription.save()
 
-                invoice = Invoice.objects.create(
-                    corporate_id=payment.corporate_id,
-                    corporate_name=payment.corporate_name,
-                    subscription=payment.subscription,
-                    invoice_number=f"INV-{payment.subscription.id.hex[:8].upper()}-{timezone.now().strftime('%Y%m%d')}",
-                    status="paid",
-                    subtotal=payment.amount,
-                    tax_amount=0,
-                    total_amount=payment.amount,
-                    currency="KES",
-                    due_date=timezone.now().date(),
-                    paid_at=timezone.now(),
-                    payment_provider_reference=receipt_number,
-                    payment_provider="mpesa_direct",
-                )
-                InvoiceLineItem.objects.create(
-                    invoice=invoice,
-                    description=f"{payment.subscription.plan.name} Subscription - Monthly",
-                    quantity=1,
-                    unit_price=payment.amount,
-                    total_price=payment.amount,
-                )
-                payment.invoice = invoice
-                payment.save()
+                # Use existing invoice if present; only create one if missing
+                if payment.invoice:
+                    invoice = payment.invoice
+                    invoice.status = "paid"
+                    invoice.paid_at = timezone.now()
+                    invoice.payment_provider_reference = receipt_number
+                    invoice.payment_provider = "mpesa_direct"
+                    invoice.save(update_fields=["status", "paid_at", "payment_provider_reference", "payment_provider"])
+                    logger.info("Existing invoice %s marked as paid", invoice.invoice_number)
+                else:
+                    invoice = Invoice.objects.create(
+                        corporate_id=payment.corporate_id,
+                        corporate_name=payment.corporate_name,
+                        subscription=payment.subscription,
+                        invoice_number=f"INV-{payment.subscription.id.hex[:8].upper()}-{timezone.now().strftime('%Y%m%d')}",
+                        status="paid",
+                        subtotal=payment.amount,
+                        tax_amount=0,
+                        total_amount=payment.amount,
+                        currency="KES",
+                        due_date=timezone.now().date(),
+                        paid_at=timezone.now(),
+                        payment_provider_reference=receipt_number,
+                        payment_provider="mpesa_direct",
+                    )
+                    InvoiceLineItem.objects.create(
+                        invoice=invoice,
+                        description=f"{payment.subscription.plan.name} Subscription - Monthly",
+                        quantity=1,
+                        unit_price=payment.amount,
+                        total_price=payment.amount,
+                    )
+                    payment.invoice = invoice
+                    payment.save(update_fields=["invoice"])
+                    logger.info("Invoice %s created for subscription %s", invoice.invoice_number, payment.subscription.id)
 
-                logger.info(
-                    "Invoice %s created for subscription %s",
-                    invoice.invoice_number,
-                    payment.subscription.id,
-                )
                 logger.info("Subscription %s activated", payment.subscription.id)
 
-            logger.info("Payment %s successful. Receipt: %s", payment.id, receipt_number)
+                # Notify main backend that payment succeeded
+                try:
+                    from .services.webhook_service import webhook_service
+                    webhook_service.send_payment_succeeded(
+                        payment.subscription,
+                        {
+                            "payment_id": str(payment.id),
+                            "receipt_number": receipt_number,
+                            "amount": float(payment.amount),
+                            "currency": payment.currency,
+                            "phone_number": str(phone_number) if phone_number else None,
+                            "paid_at": payment.paid_at.isoformat(),
+                        },
+                    )
+                except Exception as we:
+                    logger.warning("Failed to send payment.succeeded webhook: %s", we)
 
+            logger.info("Payment %s successful. Receipt: %s", payment.id, receipt_number)
         else:
             payment.status = "failed"
             if not payment.metadata:

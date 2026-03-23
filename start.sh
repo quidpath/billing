@@ -55,6 +55,9 @@ $PYTHON manage.py collectstatic --noinput
 echo " Creating superuser (if not exists)..."
 $PYTHON manage.py createsuperuser --noinput || true
 
+echo " Seeding subscription plans..."
+$PYTHON manage.py create_unified_plans || true
+
 echo "Starting Gunicorn server..."
 exec gunicorn billing_service.wsgi:application \
     --bind 0.0.0.0:${PORT:-8000} \

@@ -23,7 +23,7 @@ class WebhookService:
         self.erp_backend_url = settings.ERP_BACKEND_URL
         self.webhook_secret = settings.BILLING_WEBHOOK_SECRET
         self.webhook_endpoint = (
-            f"{self.erp_backend_url}/api/org-auth/webhooks/subscription"
+            f"{self.erp_backend_url}/webhooks/subscription"
         )
 
     def _generate_signature(self, payload: Dict[str, Any]) -> str:
@@ -127,16 +127,17 @@ class WebhookService:
         return self.send_webhook("payment.failed", data)
 
     def _serialize_subscription(self, subscription) -> Dict[str, Any]:
-        """
-        Serialize subscription model to dictionary for webhook payload
-        """
+        """Serialize subscription model to dictionary for webhook payload"""
         return {
-            "id": str(subscription.id),
+            "subscription_id": str(subscription.id),
             "corporate_id": str(subscription.corporate_id),
             "corporate_name": subscription.corporate_name,
-            "plan_id": str(subscription.plan.id),
-            "plan_name": subscription.plan.name,
-            "plan_slug": subscription.plan.slug,
+            "plan": {
+                "id": str(subscription.plan.id),
+                "name": subscription.plan.name,
+                "tier": subscription.plan.tier,
+                "plan_type": subscription.plan.plan_type,
+            },
             "status": subscription.status,
             "billing_cycle": subscription.billing_cycle,
             "start_date": subscription.start_date.isoformat(),
@@ -152,9 +153,9 @@ class WebhookService:
                 else None
             ),
             "auto_renew": subscription.auto_renew,
-            "features": subscription.plan.features,
             "total_amount": float(subscription.total_amount),
             "currency": subscription.currency,
+            "new_end_date": subscription.end_date.isoformat(),
         }
 
 

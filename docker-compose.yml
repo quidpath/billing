@@ -37,6 +37,8 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       SECRET_KEY: ${SECRET_KEY}
       BILLING_SERVICE_SECRET: ${BILLING_SERVICE_SECRET}
+      BILLING_WEBHOOK_SECRET: ${BILLING_WEBHOOK_SECRET}
+      ERP_BACKEND_URL: ${ERP_BACKEND_URL:-http://quidpath-backend-prod:8004}
       DJANGO_SETTINGS_MODULE: billing_service.settings.prod
       DJANGO_ENV: prod
     volumes:

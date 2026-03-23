@@ -18,9 +18,12 @@ logger = logging.getLogger(__name__)
 # Paths the main backend calls without a user JWT (server-to-server)
 SERVICE_TO_SERVICE_PATHS = [
     "/api/billing/subscriptions/create/",
+    "/api/billing/subscriptions/status/",
     "/api/billing/trials/create/",
     "/api/billing/trials/status/",
     "/api/billing/access/check/",
+    "/api/billing/payments/initiate/",
+    "/api/billing/payments/status/",
     "/api/admin/billing/",  # admin corporate summary etc.
 ]
 
@@ -137,8 +140,9 @@ class JWTAuthenticationMiddleware:
             "/admin/",
             "/static/",
             "/media/",
-            "/api/billing/plans/",  # Allow public access to plans
-            "/api/billing/webhooks/",  # Allow webhooks
+            "/api/billing/plans/",       # Allow public access to plans
+            "/api/billing/webhooks/",    # Allow M-Pesa callbacks
+            "/api/billing/payments/webhook/",  # Allow payment webhooks
         ]
         return any(path.startswith(p) for p in public_paths)
 

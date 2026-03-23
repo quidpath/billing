@@ -35,6 +35,13 @@ class Plan(BaseModel):
         ("professional", "Professional"),
         ("business", "Business"),
         ("enterprise", "Enterprise"),
+        # Organisation-specific tiers
+        ("basic", "Basic"),
+        ("standard", "Standard"),
+        ("premium", "Premium"),
+        # Test tiers
+        ("test_limited", "Test - Limited"),
+        ("test_full", "Test - Full Access"),
     ]
 
     BILLING_CYCLES = [
