@@ -24,6 +24,7 @@ SERVICE_TO_SERVICE_PATHS = [
     "/api/billing/access/check/",
     "/api/billing/payments/initiate/",
     "/api/billing/payments/status/",
+    "/api/billing/invoices/",  # Allow main backend to fetch invoices
     "/api/admin/billing/",  # admin corporate summary etc.
 ]
 
@@ -52,16 +53,22 @@ class JWTAuthenticationMiddleware:
                 request.corporate_id = None
                 request.user_data = {}
                 request.corporate_data = None
+                logger.info(f"Service-to-service call authenticated for {request.path}")
                 return self.get_response(request)
+            elif key:
+                logger.warning(f"Invalid service key for {request.path}")
+            # If no service key or invalid, fall through to JWT validation
 
         # Extract token from Authorization header
         auth_header = request.META.get("HTTP_AUTHORIZATION", "").strip()
         if not auth_header.startswith("Bearer "):
             has_any = bool(request.META.get("HTTP_AUTHORIZATION"))
             logger.warning(
-                "Auth rejected for %s: header %s",
+                "Auth rejected for %s: header %s, method %s, origin %s",
                 request.path,
                 "present but not Bearer" if has_any else "missing",
+                request.method,
+                request.META.get("HTTP_ORIGIN", "unknown"),
             )
             return JsonResponse(
                 {"error": "Missing or invalid authorization header"}, status=401
