@@ -101,12 +101,17 @@ class Invoice(BaseModel):
         return f"INV-{timestamp}-{count + 1:04d}"
 
     def mark_as_paid(self, payment_reference: str, provider: str = "pesaway"):
-        """Mark invoice as paid"""
+        """Mark invoice as paid and activate subscription if exists"""
         self.status = "paid"
         self.paid_at = timezone.now()
         self.payment_reference = payment_reference
         self.payment_provider = provider
         self.save()
+        
+        # Activate subscription if this invoice is for a subscription
+        if self.subscription and self.subscription.status != "active":
+            self.subscription.status = "active"
+            self.subscription.save(update_fields=["status", "updated_at"])
 
     def is_overdue(self) -> bool:
         """Check if invoice is overdue"""
