@@ -1341,6 +1341,108 @@ def mpesa_webhook(request):
 
 @csrf_exempt
 @csrf_exempt
+def admin_corporate_summary(request, corporate_id):
+    """
+    Admin endpoint to get comprehensive billing summary for a corporate.
+    Takes corporate_id as URL parameter (for Django admin panel).
+    Returns trial, subscription, invoices, payments, and financial totals.
+    """
+    try:
+        # Normalize and validate corporate_id
+        corporate_id = (corporate_id or "").strip()
+        is_valid, error_msg = validate_corporate_id(corporate_id)
+        if not is_valid:
+            return ResponseProvider.error(error_msg, status=400)
+
+        # Get trial status
+        trial_status = TrialService.check_trial_status(str(corporate_id))
+        trial_data = trial_status.get("trial") if trial_status.get("has_trial") else None
+
+        # Get subscription
+        subscription = SubscriptionService.get_active_subscription(str(corporate_id))
+        subscription_data = None
+        if subscription:
+            subscription_data = {
+                "id": str(subscription.id),
+                "plan_name": subscription.plan.name,
+                "plan_tier": subscription.plan.tier,
+                "status": subscription.status,
+                "billing_cycle": subscription.billing_cycle,
+                "total_amount": float(subscription.total_amount),
+                "currency": subscription.currency,
+                "end_date": subscription.end_date.isoformat(),
+                "next_billing_date": (
+                    subscription.next_billing_date.isoformat()
+                    if subscription.next_billing_date
+                    else None
+                ),
+            }
+
+        # Get invoices
+        invoices = InvoiceService.get_corporate_invoices(str(corporate_id), limit=10)
+        invoices_data = [
+            {
+                "id": str(inv.id),
+                "invoice_number": inv.invoice_number,
+                "status": inv.status,
+                "total_amount": float(inv.total_amount),
+                "currency": inv.currency,
+                "due_date": inv.due_date.isoformat(),
+                "paid_at": inv.paid_at.isoformat() if inv.paid_at else None,
+            }
+            for inv in invoices
+        ]
+
+        # Get payments
+        payments = PaymentService.get_payments_by_corporate(str(corporate_id), limit=10)
+        payments_data = [
+            {
+                "id": str(pmt.id),
+                "amount": float(pmt.amount),
+                "currency": pmt.currency,
+                "payment_method": pmt.payment_method,
+                "status": pmt.status,
+                "paid_at": pmt.paid_at.isoformat() if pmt.paid_at else None,
+                "created_at": pmt.created_at.isoformat(),
+            }
+            for pmt in payments
+        ]
+
+        # Calculate totals
+        from decimal import Decimal
+
+        total_invoiced = sum(Decimal(str(inv.total_amount)) for inv in invoices)
+        total_paid = sum(
+            Decimal(str(inv.total_amount)) for inv in invoices if inv.status == "paid"
+        )
+        total_outstanding = total_invoiced - total_paid
+
+        totals = {
+            "invoiced": float(total_invoiced),
+            "paid": float(total_paid),
+            "outstanding": float(total_outstanding),
+            "currency": "KES",
+        }
+
+        return ResponseProvider.success(
+            data={
+                "corporate_id": str(corporate_id),
+                "trial": trial_data,
+                "subscription": subscription_data,
+                "invoices": invoices_data,
+                "payments": payments_data,
+                "totals": totals,
+            }
+        )
+
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in admin_corporate_summary: {str(e)}", exc_info=True)
+        return ResponseProvider.error(f"Error retrieving billing summary: {str(e)}", status=500)
+
+
+@csrf_exempt
 def admin_get_corporate_summary(request):
     """
     Admin endpoint to get comprehensive billing summary for a corporate.
