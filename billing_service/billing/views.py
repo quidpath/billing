@@ -1175,123 +1175,6 @@ def payment_history(request):
 
 
 @csrf_exempt
-def admin_corporate_summary(request, corporate_id):
-    """
-    Admin endpoint to get comprehensive billing summary for a corporate
-    Used by Django admin panel to display billing information
-    """
-    try:
-        # Normalize and validate corporate_id (strip in case of encoding/whitespace)
-        raw_id = (corporate_id or "").strip()
-        is_valid, error_msg = validate_corporate_id(raw_id)
-        if not is_valid:
-            return JsonResponse({"success": False, "message": error_msg}, status=400)
-        corporate_id = raw_id
-
-        # Get trial information
-        trial_data = None
-        trial_status = TrialService.check_trial_status(str(corporate_id))
-        if trial_status.get("trial"):
-            trial = trial_status["trial"]
-            trial_data = {
-                "status": trial.get("status"),
-                "days_remaining": trial.get("days_remaining"),
-                "end_date": trial.get("end_date"),
-            }
-
-        # Get subscription information
-        subscription_data = None
-        subscription = SubscriptionService.get_active_subscription(str(corporate_id))
-        if subscription:
-            subscription_data = {
-                "id": str(subscription.id),
-                "plan_name": subscription.plan.name,
-                "plan_tier": subscription.plan.tier,
-                "status": subscription.status,
-                "billing_cycle": subscription.billing_cycle,
-                "total_amount": float(subscription.total_amount),
-                "currency": subscription.currency,  # Include currency
-                "end_date": subscription.end_date.isoformat(),
-                "next_billing_date": (
-                    subscription.next_billing_date.isoformat()
-                    if subscription.next_billing_date
-                    else None
-                ),
-            }
-
-        # Get invoices
-        invoices = InvoiceService.get_corporate_invoices(str(corporate_id))
-        invoices_data = [
-            {
-                "id": str(inv.id),
-                "invoice_number": inv.invoice_number,
-                "status": inv.status,
-                "total_amount": float(inv.total_amount),
-                "currency": inv.currency,
-                "due_date": inv.due_date.isoformat(),
-                "paid_at": inv.paid_at.isoformat() if inv.paid_at else None,
-            }
-            for inv in invoices[:10]
-        ]  # Return last 10 invoices
-
-        # Get payments
-        payments = PaymentService.get_payments_by_corporate(
-            str(corporate_id), limit=10
-        )
-
-        payments_data = [
-            {
-                "id": str(pmt.id),
-                "amount": float(pmt.amount),
-                "payment_method": pmt.payment_method,
-                "status": pmt.status,
-                "paid_at": pmt.paid_at.isoformat() if pmt.paid_at else None,
-                "created_at": pmt.created_at.isoformat(),
-            }
-            for pmt in payments
-        ]
-
-        # Calculate totals
-        from decimal import Decimal
-
-        total_invoiced = sum(Decimal(str(inv.total_amount)) for inv in invoices)
-        total_paid = sum(
-            Decimal(str(inv.total_amount)) for inv in invoices if inv.status == "paid"
-        )
-        total_outstanding = total_invoiced - total_paid
-
-        totals = {
-            "invoiced": float(total_invoiced),
-            "paid": float(total_paid),
-            "outstanding": float(total_outstanding),
-        }
-
-        return JsonResponse(
-            {
-                "success": True,
-                "data": {
-                    "corporate_id": str(corporate_id),
-                    "trial": trial_data,
-                    "subscription": subscription_data,
-                    "invoices": invoices_data,
-                    "payments": payments_data,
-                    "totals": totals,
-                },
-            },
-            status=200,
-        )
-
-    except Exception as e:
-        return JsonResponse(
-            {
-                "success": False,
-                "message": f"Error retrieving billing summary: {str(e)}",
-            },
-            status=500,
-        )
-
-
-@csrf_exempt
 def mpesa_webhook(request):
     """
     M-Pesa STK Push callback webhook handler
@@ -1457,6 +1340,7 @@ def mpesa_webhook(request):
 
 
 @csrf_exempt
+@csrf_exempt
 def admin_get_corporate_summary(request):
     """
     Admin endpoint to get comprehensive billing summary for a corporate.
@@ -1476,57 +1360,85 @@ def admin_get_corporate_summary(request):
         trial_status = TrialService.check_trial_status(str(corporate_id))
         trial_data = trial_status.get("trial") if trial_status.get("has_trial") else None
 
-        # Get subscription status
-        subscription_status = SubscriptionService.get_subscription_status(str(corporate_id))
-        subscription_data = subscription_status.get("subscription") if subscription_status.get("has_subscription") else None
+        # Get subscription
+        subscription = SubscriptionService.get_active_subscription(str(corporate_id))
+        subscription_data = None
+        if subscription:
+            subscription_data = {
+                "id": str(subscription.id),
+                "plan_name": subscription.plan.name,
+                "plan_tier": subscription.plan.tier,
+                "status": subscription.status,
+                "billing_cycle": subscription.billing_cycle,
+                "total_amount": float(subscription.total_amount),
+                "currency": subscription.currency,
+                "end_date": subscription.end_date.isoformat(),
+                "next_billing_date": (
+                    subscription.next_billing_date.isoformat()
+                    if subscription.next_billing_date
+                    else None
+                ),
+            }
 
         # Get invoices
-        invoices = InvoiceService.get_invoices_for_corporate(str(corporate_id))
+        invoices = InvoiceService.get_corporate_invoices(str(corporate_id), limit=10)
         invoices_data = [
             {
                 "id": str(inv.id),
                 "invoice_number": inv.invoice_number,
                 "status": inv.status,
                 "total_amount": float(inv.total_amount),
+                "currency": inv.currency,
                 "due_date": inv.due_date.isoformat(),
                 "paid_at": inv.paid_at.isoformat() if inv.paid_at else None,
             }
-            for inv in invoices[:10]  # Last 10 invoices
+            for inv in invoices
         ]
 
         # Get payments
-        payments = Payment.objects.filter(corporate_id=corporate_id).order_by("-created_at")[:10]
+        payments = PaymentService.get_payments_by_corporate(str(corporate_id), limit=10)
         payments_data = [
             {
                 "id": str(pmt.id),
                 "amount": float(pmt.amount),
+                "currency": pmt.currency,
                 "payment_method": pmt.payment_method,
                 "status": pmt.status,
                 "paid_at": pmt.paid_at.isoformat() if pmt.paid_at else None,
+                "created_at": pmt.created_at.isoformat(),
             }
             for pmt in payments
         ]
 
         # Calculate totals
-        all_invoices = InvoiceService.get_invoices_for_corporate(str(corporate_id))
-        total_invoiced = sum(float(inv.total_amount) for inv in all_invoices)
-        total_paid = sum(float(inv.total_amount) for inv in all_invoices if inv.status == "paid")
+        from decimal import Decimal
+
+        total_invoiced = sum(Decimal(str(inv.total_amount)) for inv in invoices)
+        total_paid = sum(
+            Decimal(str(inv.total_amount)) for inv in invoices if inv.status == "paid"
+        )
         total_outstanding = total_invoiced - total_paid
+
+        totals = {
+            "invoiced": float(total_invoiced),
+            "paid": float(total_paid),
+            "outstanding": float(total_outstanding),
+            "currency": "KES",  # Default currency
+        }
 
         return ResponseProvider.success(
             data={
+                "corporate_id": str(corporate_id),
                 "trial": trial_data,
                 "subscription": subscription_data,
                 "invoices": invoices_data,
                 "payments": payments_data,
-                "totals": {
-                    "invoiced": total_invoiced,
-                    "paid": total_paid,
-                    "outstanding": total_outstanding,
-                },
+                "totals": totals,
             }
         )
 
     except Exception as e:
-        logger.error(f"Error getting corporate summary: {str(e)}")
-        return ResponseProvider.error(str(e), status=500)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in admin_get_corporate_summary: {str(e)}", exc_info=True)
+        return ResponseProvider.error(f"Error retrieving billing summary: {str(e)}", status=500)
