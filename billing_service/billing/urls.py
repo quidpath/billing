@@ -51,4 +51,7 @@ urlpatterns = [
     
     # M-Pesa Webhook
     path("webhooks/mpesa/", mpesa_webhook.mpesa_callback, name="mpesa_callback"),
+    
+    # Admin endpoints
+    path("admin/corporate-summary/", views.admin_get_corporate_summary, name="admin_corporate_summary"),
 ]

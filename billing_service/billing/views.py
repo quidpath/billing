@@ -83,6 +83,7 @@ def create_trial(request):
             corporate_id=str(corporate_id),
             corporate_name=(data or {}).get("corporate_name", ""),
             plan_tier=(data or {}).get("plan_tier", "starter"),
+            phone_number=(data or {}).get("phone_number", ""),
         )
 
         return ResponseProvider.success(
@@ -92,6 +93,7 @@ def create_trial(request):
                 "status": trial.status,
                 "days_remaining": trial.days_remaining(),
                 "end_date": trial.end_date.isoformat(),
+                "phone_number": trial.metadata.get("phone_number", ""),
             },
             status=201,
         )
@@ -795,6 +797,7 @@ def check_access(request):
                         "status": trial.get("status"),
                         "days_remaining": trial.get("days_remaining"),
                         "end_date": trial.get("end_date"),
+                        "phone_number": trial.get("phone_number", ""),
                     },
                     "message": f"Trial active with {trial.get('days_remaining', 0)} days remaining",
                 },
@@ -1451,3 +1454,79 @@ def mpesa_webhook(request):
             {"success": False, "message": f"Error processing webhook: {str(e)}"},
             status=500,
         )
+
+
+@csrf_exempt
+def admin_get_corporate_summary(request):
+    """
+    Admin endpoint to get comprehensive billing summary for a corporate.
+    Returns trial, subscription, invoices, payments, and financial totals.
+    """
+    data, err = get_clean_data(request, allowed_methods=["POST"], require_json_body=True)
+    if err is not None:
+        return err
+
+    try:
+        corporate_id = data.get("corporate_id") if data else None
+        is_valid, error_msg = validate_corporate_id(corporate_id)
+        if not is_valid:
+            return ResponseProvider.error(error_msg, status=400)
+
+        # Get trial status
+        trial_status = TrialService.check_trial_status(str(corporate_id))
+        trial_data = trial_status.get("trial") if trial_status.get("has_trial") else None
+
+        # Get subscription status
+        subscription_status = SubscriptionService.get_subscription_status(str(corporate_id))
+        subscription_data = subscription_status.get("subscription") if subscription_status.get("has_subscription") else None
+
+        # Get invoices
+        invoices = InvoiceService.get_invoices_for_corporate(str(corporate_id))
+        invoices_data = [
+            {
+                "id": str(inv.id),
+                "invoice_number": inv.invoice_number,
+                "status": inv.status,
+                "total_amount": float(inv.total_amount),
+                "due_date": inv.due_date.isoformat(),
+                "paid_at": inv.paid_at.isoformat() if inv.paid_at else None,
+            }
+            for inv in invoices[:10]  # Last 10 invoices
+        ]
+
+        # Get payments
+        payments = Payment.objects.filter(corporate_id=corporate_id).order_by("-created_at")[:10]
+        payments_data = [
+            {
+                "id": str(pmt.id),
+                "amount": float(pmt.amount),
+                "payment_method": pmt.payment_method,
+                "status": pmt.status,
+                "paid_at": pmt.paid_at.isoformat() if pmt.paid_at else None,
+            }
+            for pmt in payments
+        ]
+
+        # Calculate totals
+        all_invoices = InvoiceService.get_invoices_for_corporate(str(corporate_id))
+        total_invoiced = sum(float(inv.total_amount) for inv in all_invoices)
+        total_paid = sum(float(inv.total_amount) for inv in all_invoices if inv.status == "paid")
+        total_outstanding = total_invoiced - total_paid
+
+        return ResponseProvider.success(
+            data={
+                "trial": trial_data,
+                "subscription": subscription_data,
+                "invoices": invoices_data,
+                "payments": payments_data,
+                "totals": {
+                    "invoiced": total_invoiced,
+                    "paid": total_paid,
+                    "outstanding": total_outstanding,
+                },
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting corporate summary: {str(e)}")
+        return ResponseProvider.error(str(e), status=500)
