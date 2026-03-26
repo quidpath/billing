@@ -24,7 +24,9 @@ SERVICE_TO_SERVICE_PATHS = [
     "/api/billing/access/check/",
     "/api/billing/payments/initiate/",
     "/api/billing/payments/status/",
+    "/api/billing/payments/history/",  # Allow main backend to fetch payment history
     "/api/billing/invoices/",  # Allow main backend to fetch invoices
+    "/api/billing/admin/corporate-summary/",  # Allow admin panel to fetch billing summary
     "/api/admin/billing/",  # admin corporate summary etc.
 ]
 
