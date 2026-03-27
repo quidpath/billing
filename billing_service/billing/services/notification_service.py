@@ -71,7 +71,7 @@ class NotificationService:
             "total_amount": invoice.total_amount,
             "due_date": invoice.due_date.strftime('%B %d, %Y'),
             "billing_period": f"{invoice.billing_period_start.strftime('%B %d, %Y')} - {invoice.billing_period_end.strftime('%B %d, %Y')}",
-            "invoice_url": "https://app.quidpath.com/billing/invoices",
+            "invoice_url": "https://stage.quidpath.com/billing/invoices",
         }
         html_body = BillingEmailTemplates.invoice_created(**replace_items)
 
@@ -112,7 +112,7 @@ class NotificationService:
             "amount": payment.amount,
             "payment_method": payment.payment_method.upper(),
             "payment_date": payment.paid_at.strftime('%B %d, %Y %I:%M %p') if payment.paid_at else 'N/A',
-            "receipt_url": "https://app.quidpath.com/billing/invoices",
+            "receipt_url": "https://stage.quidpath.com/billing/invoices",
         }
         html_body = BillingEmailTemplates.payment_confirmed(**replace_items)
 
@@ -160,7 +160,7 @@ class NotificationService:
             "due_date": invoice.due_date.strftime('%B %d, %Y'),
             "days_until_due": days_until_due,
             "urgency_color": urgency_color,
-            "payment_url": f"https://app.quidpath.com/billing/invoices/{invoice.id}",
+            "payment_url": f"https://stage.quidpath.com/billing/invoices/{invoice.id}",
         }
         html_body = BillingEmailTemplates.invoice_reminder(**replace_items)
 
@@ -199,7 +199,7 @@ class NotificationService:
             "corporate_name": trial.corporate_name,
             "days_remaining": days_remaining,
             "end_date": trial.end_date.strftime('%B %d, %Y'),
-            "plans_url": "https://app.quidpath.com/billing/plans",
+            "plans_url": "https://stage.quidpath.com/billing/plans",
         }
         html_body = BillingEmailTemplates.trial_expiring(**replace_items)
 
@@ -218,7 +218,7 @@ class NotificationService:
         
         Don't lose access to your data and workflows. Subscribe today!
         
-        Visit: https://app.quidpath.com/billing/plans
+        Visit: https://stage.quidpath.com/billing/plans
         
         © {datetime.now().year} Quidpath. All rights reserved.
         """
