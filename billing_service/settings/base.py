@@ -169,13 +169,9 @@ PESAWAY_SECRET_KEY = os.environ.get("PESAWAY_SECRET_KEY", "")
 PESAWAY_MERCHANT_ID = os.environ.get("PESAWAY_MERCHANT_ID", "")
 PESAWAY_TEST_MODE = os.environ.get("PESAWAY_TEST_MODE", "true").lower() == "true"
 PESAWAY_WEBHOOK_URL = os.environ.get("PESAWAY_WEBHOOK_URL", "")
-PESAWAY_WEBHOOK_SECRET = os.environ.get("PESAWAY_WEBHOOK_SECRET", "")
-
-# M-Pesa Daraja Configuration
-MPESA_CONSUMER_KEY = os.environ.get("MPESA_CONSUMER_KEY", "")
-MPESA_CONSUMER_SECRET = os.environ.get("MPESA_CONSUMER_SECRET", "")
-MPESA_BUSINESS_SHORT_CODE = os.environ.get("MPESA_BUSINESS_SHORT_CODE", "9895960")
-MPESA_TILL_NUMBER = os.environ.get("MPESA_TILL_NUMBER", "9100097")
-MPESA_PASSKEY = os.environ.get("MPESA_PASSKEY", "")
-MPESA_CALLBACK_URL = os.environ.get("MPESA_CALLBACK_URL", "")
-MPESA_ENVIRONMENT = os.environ.get("MPESA_ENVIRONMENT", "production")
+# Paystack Configuration (replaces M-Pesa/Pesaway)
+# Note: Paystack uses SECRET_KEY for webhook signature verification (HMAC SHA512)
+PAYSTACK_PUBLIC_KEY = os.environ.get("PAYSTACK_PUBLIC_KEY", "pk_live_2e38c2fb07042d05c08c4b4d3b4c8ce8f35d87c")
+PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY", "")
+PAYSTACK_TEST_MODE = os.environ.get("PAYSTACK_TEST_MODE", "false").lower() == "true"
+PAYSTACK_CALLBACK_URL = os.environ.get("PAYSTACK_CALLBACK_URL", "")

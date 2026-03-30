@@ -92,6 +92,15 @@ jobs:
 
           # Stage allowed hosts
           secrets["ALLOWED_HOSTS"]="stage-billing.quidpath.com,localhost,127.0.0.1,0.0.0.0"
+          
+          # Paystack - Stage (webhook verification uses SECRET_KEY)
+          secrets["PAYSTACK_PUBLIC_KEY"]="${{ secrets.PAYSTACK_PUBLIC_KEY_STAGING }}"
+          secrets["PAYSTACK_SECRET_KEY"]="${{ secrets.PAYSTACK_SECRET_KEY_STAGING }}"
+          secrets["PAYSTACK_TEST_MODE"]="${{ secrets.PAYSTACK_TEST_MODE_STAGING }}"
+          secrets["PAYSTACK_CALLBACK_URL"]="https://stage-api.quidpath.com/api/billing/payments/callback/"
+          secrets["PAYSTACK_WEBHOOK_URL"]="https://stage-api.quidpath.com/api/billing/webhooks/paystack/"
+          secrets["FRONTEND_URL"]="https://stage.quidpath.com"
+          secrets["BACKEND_URL"]="https://stage-api.quidpath.com"
 
           json="{}"
           for key in "${!secrets[@]}"; do

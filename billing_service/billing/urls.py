@@ -7,12 +7,21 @@ from django.urls import path
 from . import views
 from . import views_payment_simple
 from . import mpesa_webhook
+from . import views_paystack_webhook
+from . import views_individual_payment
 
 app_name = "billing"
 
 urlpatterns = [
     # Access Control - CRITICAL
     path("access/check/", views.check_access, name="check_access"),
+    
+    # Paystack Webhook - MUST BE FIRST (no auth required)
+    path("webhooks/paystack/", views_paystack_webhook.paystack_webhook, name="paystack_webhook"),
+    
+    # Individual Payment (new Paystack-based)
+    path("payments/individual/initiate/", views_individual_payment.initiate_individual_payment, name="initiate_individual_payment"),
+    path("payments/individual/verify/", views_individual_payment.verify_individual_payment, name="verify_individual_payment"),
     # Plans
     path("plans/", views.list_plans, name="list_plans"),
     # Payment Verification (KES 1 verification before trial)
