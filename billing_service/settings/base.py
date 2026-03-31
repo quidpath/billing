@@ -163,15 +163,9 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     "authorization",
 ]
 
-# Pesaway Configuration
-PESAWAY_API_KEY = os.environ.get("PESAWAY_API_KEY", "")
-PESAWAY_SECRET_KEY = os.environ.get("PESAWAY_SECRET_KEY", "")
-PESAWAY_MERCHANT_ID = os.environ.get("PESAWAY_MERCHANT_ID", "")
-PESAWAY_TEST_MODE = os.environ.get("PESAWAY_TEST_MODE", "true").lower() == "true"
-PESAWAY_WEBHOOK_URL = os.environ.get("PESAWAY_WEBHOOK_URL", "")
-# Paystack Configuration (replaces M-Pesa/Pesaway)
+# Paystack Configuration (Primary Payment Gateway)
 # Note: Paystack uses SECRET_KEY for webhook signature verification (HMAC SHA512)
-PAYSTACK_PUBLIC_KEY = os.environ.get("PAYSTACK_PUBLIC_KEY", "pk_live_2e38c2fb07042d05c08c4b4d3b4c8ce8f35d87c")
+PAYSTACK_PUBLIC_KEY = os.environ.get("PAYSTACK_PUBLIC_KEY", "")
 PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY", "")
 PAYSTACK_TEST_MODE = os.environ.get("PAYSTACK_TEST_MODE", "false").lower() == "true"
 PAYSTACK_CALLBACK_URL = os.environ.get("PAYSTACK_CALLBACK_URL", "")

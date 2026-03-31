@@ -1,5 +1,5 @@
 """
-Payment service for processing payments
+Payment service for processing payments - Paystack Only
 """
 
 import json
@@ -9,9 +9,7 @@ from typing import Dict, Optional
 
 from django.utils import timezone
 
-from ..adapters.mpesa_daraja import MpesaDarajaAdapter
 from ..adapters.paystack import PaystackAdapter
-from ..adapters.pesaway import PesawayAdapter
 from ..models.invoice import Invoice
 from ..models.payment import Payment
 from .notification_service import NotificationService
@@ -20,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class PaymentService:
-    """Service for processing payments"""
+    """Service for processing payments via Paystack"""
 
     @staticmethod
     def get_payment_by_id(payment_id):
@@ -57,51 +55,22 @@ class PaymentService:
         customer_phone: Optional[str] = None,
         provider_config: Optional[Dict] = None,
     ) -> Dict:
-        """Initiate payment for an invoice"""
+        """Initiate payment for an invoice via Paystack"""
         import os
 
-        # Determine provider based on payment method
-        if payment_method == "mpesa":
-            # Use M-Pesa Daraja API for direct STK Push
-            provider = "mpesa_daraja"
-            if not provider_config:
-                provider_config = {
-                    "consumer_key": os.environ.get("MPESA_CONSUMER_KEY", ""),
-                    "consumer_secret": os.environ.get("MPESA_CONSUMER_SECRET", ""),
-                    "business_short_code": os.environ.get("MPESA_SHORTCODE", "174379"),
-                    "passkey": os.environ.get("MPESA_PASSKEY", ""),
-                    "test_mode": os.environ.get("MPESA_TEST_MODE", "true").lower()
-                    == "true",
-                    "callback_url": os.environ.get("MPESA_CALLBACK_URL", ""),
-                }
-            adapter = MpesaDarajaAdapter(provider_config)
-        elif payment_method in ["card", "bank_transfer"]:
-            # Use Paystack for card and bank payments
-            provider = "paystack"
-            if not provider_config:
-                provider_config = {
-                    "public_key": os.environ.get("PAYSTACK_PUBLIC_KEY", ""),
-                    "secret_key": os.environ.get("PAYSTACK_SECRET_KEY", ""),
-                    "test_mode": os.environ.get("PAYSTACK_TEST_MODE", "true").lower()
-                    == "true",
-                    "callback_url": os.environ.get("PAYSTACK_CALLBACK_URL", ""),
-                    "webhook_secret": os.environ.get("PAYSTACK_SECRET_KEY", ""),
-                }
-            adapter = PaystackAdapter(provider_config)
-        else:
-            # Use Pesaway as fallback for other methods
-            provider = "pesaway"
-            if not provider_config:
-                provider_config = {
-                    "api_key": os.environ.get("PESAWAY_API_KEY", ""),
-                    "secret_key": os.environ.get("PESAWAY_SECRET_KEY", ""),
-                    "merchant_id": os.environ.get("PESAWAY_MERCHANT_ID", ""),
-                    "test_mode": os.environ.get("PESAWAY_TEST_MODE", "true").lower()
-                    == "true",
-                    "callback_url": os.environ.get("PESAWAY_CALLBACK_URL", ""),
-                    "webhook_secret": os.environ.get("PESAWAY_WEBHOOK_SECRET", ""),
-                }
-            adapter = PesawayAdapter(provider_config)
+        # All payments go through Paystack
+        provider = "paystack"
+        if not provider_config:
+            provider_config = {
+                "public_key": os.environ.get("PAYSTACK_PUBLIC_KEY", ""),
+                "secret_key": os.environ.get("PAYSTACK_SECRET_KEY", ""),
+                "test_mode": os.environ.get("PAYSTACK_TEST_MODE", "false").lower()
+                == "true",
+                "callback_url": os.environ.get("PAYSTACK_CALLBACK_URL", ""),
+                "webhook_secret": os.environ.get("PAYSTACK_SECRET_KEY", ""),
+            }
+
+        adapter = PaystackAdapter(provider_config)
 
         # Create payment record
         payment = Payment.objects.create(
@@ -126,7 +95,7 @@ class PaymentService:
             "description": f"Payment for invoice {invoice.invoice_number}",
         }
 
-        # Initiate payment with the adapter
+        # Initiate payment with Paystack
         result = adapter.initiate_payment(
             amount=invoice.total_amount,
             currency=invoice.currency,
@@ -168,41 +137,20 @@ class PaymentService:
         provider: str = "paystack",
         provider_config: Optional[Dict] = None,
     ) -> Dict:
-        """Handle payment webhook from provider"""
+        """Handle payment webhook from Paystack"""
         import os
 
-        # Select adapter based on provider
-        if provider == "mpesa_daraja" or provider == "mpesa":
-            if not provider_config:
-                provider_config = {
-                    "consumer_key": os.environ.get("MPESA_CONSUMER_KEY", ""),
-                    "consumer_secret": os.environ.get("MPESA_CONSUMER_SECRET", ""),
-                    "business_short_code": os.environ.get("MPESA_SHORTCODE", "174379"),
-                    "passkey": os.environ.get("MPESA_PASSKEY", ""),
-                    "test_mode": os.environ.get("MPESA_TEST_MODE", "true").lower()
-                    == "true",
-                }
-            adapter = MpesaDarajaAdapter(provider_config)
-        elif provider == "pesaway":
-            if not provider_config:
-                provider_config = {
-                    "api_key": os.environ.get("PESAWAY_API_KEY", ""),
-                    "secret_key": os.environ.get("PESAWAY_SECRET_KEY", ""),
-                    "webhook_secret": os.environ.get("PESAWAY_WEBHOOK_SECRET", ""),
-                    "test_mode": os.environ.get("PESAWAY_TEST_MODE", "true").lower()
-                    == "true",
-                }
-            adapter = PesawayAdapter(provider_config)
-        else:  # Default to paystack
-            if not provider_config:
-                provider_config = {
-                    "public_key": os.environ.get("PAYSTACK_PUBLIC_KEY", ""),
-                    "secret_key": os.environ.get("PAYSTACK_SECRET_KEY", ""),
-                    "webhook_secret": os.environ.get("PAYSTACK_SECRET_KEY", ""),
-                    "test_mode": os.environ.get("PAYSTACK_TEST_MODE", "true").lower()
-                    == "true",
-                }
-            adapter = PaystackAdapter(provider_config)
+        # Only Paystack is supported
+        if not provider_config:
+            provider_config = {
+                "public_key": os.environ.get("PAYSTACK_PUBLIC_KEY", ""),
+                "secret_key": os.environ.get("PAYSTACK_SECRET_KEY", ""),
+                "webhook_secret": os.environ.get("PAYSTACK_SECRET_KEY", ""),
+                "test_mode": os.environ.get("PAYSTACK_TEST_MODE", "false").lower()
+                == "true",
+            }
+
+        adapter = PaystackAdapter(provider_config)
 
         import json
 
@@ -213,7 +161,7 @@ class PaymentService:
         )
 
         if not adapter.verify_webhook_signature(payload_bytes, headers):
-            logger.warning(f"Invalid webhook signature from {provider}")
+            logger.warning(f"Invalid webhook signature from Paystack")
             return {
                 "success": False,
                 "message": "Invalid webhook signature",
@@ -231,21 +179,10 @@ class PaymentService:
         payment = Payment.objects.filter(provider_reference=provider_reference).first()
         if not payment:
             logger.warning(f"Payment not found for reference {provider_reference}")
-            # Try to find by CheckoutRequestID if provider_reference is CheckoutRequestID
-            checkout_request_id = webhook_data.get("provider_reference")
-            if checkout_request_id:
-                payment = Payment.objects.filter(
-                    provider_reference=checkout_request_id
-                ).first()
-
-            if not payment:
-                logger.error(
-                    f"Payment not found for reference {provider_reference} or CheckoutRequestID {checkout_request_id}"
-                )
-                return {
-                    "success": False,
-                    "message": "Payment not found",
-                }
+            return {
+                "success": False,
+                "message": "Payment not found",
+            }
 
         logger.info(
             f"Webhook: Found payment {payment.id} for reference {provider_reference}, current status: {payment.status}"

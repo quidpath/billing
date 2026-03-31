@@ -27,19 +27,15 @@ class Payment(BaseModel):
     ]
 
     PAYMENT_METHODS = [
-        ("mpesa", "M-Pesa"),
         ("card", "Card"),
         ("bank_transfer", "Bank Transfer"),
-        ("airtel_money", "Airtel Money"),
-        ("pesaway", "Pesaway"),
+        ("mobile_money", "Mobile Money"),
+        ("ussd", "USSD"),
         ("other", "Other"),
     ]
 
     PROVIDERS = [
-        ("pesaway", "Pesaway"),
-        ("flutterwave", "Flutterwave"),
-        ("mpesa_direct", "M-Pesa Direct"),
-        ("bank", "Bank"),
+        ("paystack", "Paystack"),
     ]
 
     PAYMENT_TYPES = [
@@ -82,7 +78,7 @@ class Payment(BaseModel):
 
     # Payment Method
     payment_method = models.CharField(max_length=50, choices=PAYMENT_METHODS)
-    provider = models.CharField(max_length=50, choices=PROVIDERS, default="pesaway")
+    provider = models.CharField(max_length=50, choices=PROVIDERS, default="paystack")
 
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
@@ -160,7 +156,7 @@ class PaymentMethod(BaseModel):
 
     METHOD_TYPES = [
         ("card", "Card"),
-        ("mpesa", "M-Pesa"),
+        ("mobile_money", "Mobile Money"),
         ("bank_account", "Bank Account"),
     ]
 
@@ -177,8 +173,8 @@ class PaymentMethod(BaseModel):
     card_exp_year = models.IntegerField(null=True, blank=True)
     token = models.CharField(max_length=255, blank=True, null=True)  # Provider token
 
-    # M-Pesa Details
-    mpesa_phone = models.CharField(max_length=20, blank=True, null=True)
+    # Mobile Money Details
+    mobile_money_phone = models.CharField(max_length=20, blank=True, null=True)
 
     # Bank Account Details
     bank_name = models.CharField(max_length=255, blank=True, null=True)
@@ -186,7 +182,7 @@ class PaymentMethod(BaseModel):
     account_name = models.CharField(max_length=255, blank=True, null=True)
 
     # Provider
-    provider = models.CharField(max_length=50, default="pesaway")
+    provider = models.CharField(max_length=50, default="paystack")
     provider_token = models.CharField(max_length=255, blank=True, null=True)
 
     # Metadata
@@ -202,8 +198,8 @@ class PaymentMethod(BaseModel):
     def __str__(self):
         if self.method_type == "card" and self.card_last4:
             return f"Card ending in {self.card_last4}"
-        elif self.method_type == "mpesa" and self.mpesa_phone:
-            return f"M-Pesa {self.mpesa_phone}"
+        elif self.method_type == "mobile_money" and self.mobile_money_phone:
+            return f"Mobile Money {self.mobile_money_phone}"
         elif self.method_type == "bank_account" and self.bank_name:
             return f"{self.bank_name} Account"
         return f"{self.get_method_type_display()}"

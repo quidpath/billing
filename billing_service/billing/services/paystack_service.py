@@ -17,7 +17,7 @@ class PaystackService:
     
     def __init__(self):
         self.secret_key = os.environ.get("PAYSTACK_SECRET_KEY", "")
-        self.public_key = os.environ.get("PAYSTACK_PUBLIC_KEY", "pk_live_2e38c2fb07042d05c08c4b4d3b4c8ce8f35d87c")
+        self.public_key = os.environ.get("PAYSTACK_PUBLIC_KEY", "")
         self.test_mode = os.environ.get("PAYSTACK_TEST_MODE", "false").lower() == "true"
         self.base_url = "https://api.paystack.co"
         self.callback_url = os.environ.get("PAYSTACK_CALLBACK_URL", "")

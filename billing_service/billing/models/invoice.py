@@ -68,7 +68,7 @@ class Invoice(BaseModel):
     payment_reference = models.CharField(max_length=255, blank=True, null=True)
     payment_provider = models.CharField(
         max_length=50, blank=True, null=True
-    )  # pesaway, flutterwave, etc.
+    )  # paystack, etc.
 
     # PDF
     invoice_pdf_url = models.URLField(blank=True, null=True)
@@ -100,7 +100,7 @@ class Invoice(BaseModel):
         ).count()
         return f"INV-{timestamp}-{count + 1:04d}"
 
-    def mark_as_paid(self, payment_reference: str, provider: str = "pesaway"):
+    def mark_as_paid(self, payment_reference: str, provider: str = "paystack"):
         """Mark invoice as paid and activate subscription if exists"""
         self.status = "paid"
         self.paid_at = timezone.now()

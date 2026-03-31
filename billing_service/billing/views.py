@@ -420,82 +420,28 @@ def initiate_payment(request):
                 {"success": False, "message": "Invoice already paid"}, status=400
             )
 
-        # Set up provider config based on payment method
-        provider_config = None
-        if payment_method == "mpesa":
-            # For sandbox, use a publicly accessible test webhook URL
-            # For production, use the actual callback URL
-            test_mode = os.environ.get("MPESA_TEST_MODE", "true").lower() == "true"
-            if test_mode:
-                # Use webhook.site for sandbox testing (publicly accessible test endpoint)
-                # You can view webhooks at: https://webhook.site (get your unique URL)
-                # For now, using a generic test URL that M-Pesa accepts
-                callback_url = os.environ.get(
-                    "MPESA_CALLBACK_URL", "https://webhook.site/unique-id-here"
-                )
-            else:
-                # Production requires a real publicly accessible URL
-                callback_url = os.environ.get(
-                    "MPESA_CALLBACK_URL",
-                    f"{request.scheme}://{request.get_host()}/api/billing/payments/webhook/mpesa/",
-                )
-
-            logger.info(f"M-Pesa callback URL: {callback_url} (test_mode={test_mode})")
-
-            provider_config = {
-                "consumer_key": os.environ.get("MPESA_CONSUMER_KEY", ""),
-                "consumer_secret": os.environ.get("MPESA_CONSUMER_SECRET", ""),
-                "business_short_code": os.environ.get("MPESA_SHORTCODE", "174379"),
-                "passkey": os.environ.get("MPESA_PASSKEY", ""),
-                "test_mode": test_mode,
-                "callback_url": callback_url,
-            }
-            # Validate M-Pesa configuration
-            if not all(
-                [
-                    provider_config["consumer_key"],
-                    provider_config["consumer_secret"],
-                    provider_config["passkey"],
-                ]
-            ):
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "message": "M-Pesa payment gateway is not properly configured. Please contact support.",
-                    },
-                    status=500,
-                )
-        elif payment_method in ["card", "bank_transfer"]:
-            provider_config = {
-                "public_key": os.environ.get("PAYSTACK_PUBLIC_KEY", ""),
-                "secret_key": os.environ.get("PAYSTACK_SECRET_KEY", ""),
-                "test_mode": os.environ.get("PAYSTACK_TEST_MODE", "true").lower()
-                == "true",
-                "callback_url": os.environ.get(
-                    "PAYSTACK_CALLBACK_URL",
-                    f"{request.scheme}://{request.get_host()}/api/billing/payments/webhook/",
-                ),
-                "webhook_secret": os.environ.get("PAYSTACK_SECRET_KEY", ""),
-            }
-            # Validate Paystack configuration
-            if not all([provider_config["public_key"], provider_config["secret_key"]]):
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "message": "Card payment gateway is not properly configured. Please contact support.",
-                    },
-                    status=500,
-                )
-        else:
-            provider_config = {
-                "api_key": os.environ.get("PESAWAY_API_KEY", ""),
-                "secret_key": os.environ.get("PESAWAY_SECRET_KEY", ""),
-                "merchant_id": os.environ.get("PESAWAY_MERCHANT_ID", ""),
-                "test_mode": os.environ.get("PESAWAY_TEST_MODE", "true").lower()
-                == "true",
-                "callback_url": os.environ.get("PESAWAY_WEBHOOK_URL", ""),
-                "webhook_secret": os.environ.get("PESAWAY_WEBHOOK_SECRET", ""),
-            }
+        # All payments go through Paystack
+        provider_config = {
+            "public_key": os.environ.get("PAYSTACK_PUBLIC_KEY", ""),
+            "secret_key": os.environ.get("PAYSTACK_SECRET_KEY", ""),
+            "test_mode": os.environ.get("PAYSTACK_TEST_MODE", "false").lower()
+            == "true",
+            "callback_url": os.environ.get(
+                "PAYSTACK_CALLBACK_URL",
+                f"{request.scheme}://{request.get_host()}/api/billing/payments/webhook/",
+            ),
+            "webhook_secret": os.environ.get("PAYSTACK_SECRET_KEY", ""),
+        }
+        
+        # Validate Paystack configuration
+        if not all([provider_config["public_key"], provider_config["secret_key"]]):
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Payment gateway is not properly configured. Please contact support.",
+                },
+                status=500,
+            )
 
         # Log payment initiation
         import logging
@@ -550,15 +496,9 @@ def initiate_payment(request):
                 "authentication" in error_message.lower()
                 or "access token" in error_message.lower()
             ):
-                if payment_method == "mpesa":
-                    error_message = "M-Pesa authentication failed. Please check your M-Pesa credentials are correct and valid."
-                else:
-                    error_message = "Payment gateway authentication failed. Please check your credentials."
+                error_message = "Payment gateway authentication failed. Please check your credentials."
             elif "400" in error_message or "bad request" in error_message.lower():
-                if payment_method == "mpesa":
-                    error_message = "M-Pesa API returned an error. Please verify your M-Pesa credentials (Consumer Key, Consumer Secret, and Passkey) are correct."
-                else:
-                    error_message = "Payment gateway returned an error. Please check your payment gateway configuration."
+                error_message = "Payment gateway returned an error. Please check your payment gateway configuration."
 
             return JsonResponse(
                 {"success": False, "message": error_message}, status=500
@@ -601,41 +541,18 @@ def payment_webhook(request):
             f"Webhook received: path={request.path}, payload keys={list(payload.keys())}"
         )
 
-        # Determine provider from URL path or header
-        provider = "pesaway"  # Default
-        if "mpesa" in request.path.lower():
-            provider = "mpesa_daraja"
-        elif "paystack" in request.path.lower():
-            provider = "paystack"
+        # All webhooks are from Paystack
+        provider = "paystack"
+        logger.info(f"Webhook provider: {provider}")
 
-        logger.info(f"Webhook provider determined: {provider}")
-
-        # Configure based on provider
-        if provider == "mpesa_daraja":
-            provider_config = {
-                "consumer_key": os.environ.get("MPESA_CONSUMER_KEY", ""),
-                "consumer_secret": os.environ.get("MPESA_CONSUMER_SECRET", ""),
-                "business_short_code": os.environ.get("MPESA_SHORTCODE", "174379"),
-                "passkey": os.environ.get("MPESA_PASSKEY", ""),
-                "test_mode": os.environ.get("MPESA_TEST_MODE", "true").lower()
-                == "true",
-            }
-        elif provider == "paystack":
-            provider_config = {
-                "public_key": os.environ.get("PAYSTACK_PUBLIC_KEY", ""),
-                "secret_key": os.environ.get("PAYSTACK_SECRET_KEY", ""),
-                "webhook_secret": os.environ.get("PAYSTACK_SECRET_KEY", ""),
-                "test_mode": os.environ.get("PAYSTACK_TEST_MODE", "true").lower()
-                == "true",
-            }
-        else:
-            provider_config = {
-                "api_key": os.environ.get("PESAWAY_API_KEY", ""),
-                "secret_key": os.environ.get("PESAWAY_SECRET_KEY", ""),
-                "webhook_secret": os.environ.get("PESAWAY_WEBHOOK_SECRET", ""),
-                "test_mode": os.environ.get("PESAWAY_TEST_MODE", "true").lower()
-                == "true",
-            }
+        # Configure Paystack
+        provider_config = {
+            "public_key": os.environ.get("PAYSTACK_PUBLIC_KEY", ""),
+            "secret_key": os.environ.get("PAYSTACK_SECRET_KEY", ""),
+            "webhook_secret": os.environ.get("PAYSTACK_SECRET_KEY", ""),
+            "test_mode": os.environ.get("PAYSTACK_TEST_MODE", "false").lower()
+            == "true",
+        }
 
         logger.info(
             f"Webhook received: path={request.path}, provider={provider}, payload keys={list(payload.keys())}"
