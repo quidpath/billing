@@ -41,6 +41,10 @@ services:
       ERP_BACKEND_URL: ${ERP_BACKEND_URL:-http://quidpath-backend-prod:8004}
       DJANGO_SETTINGS_MODULE: billing_service.settings.prod
       DJANGO_ENV: prod
+      PAYSTACK_PUBLIC_KEY: ${PAYSTACK_PUBLIC_KEY}
+      PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY}
+      PAYSTACK_TEST_MODE: ${PAYSTACK_TEST_MODE:-false}
+      PAYSTACK_CALLBACK_URL: ${PAYSTACK_CALLBACK_URL:-https://billing.quidpath.com/api/billing/webhooks/paystack/}
     volumes:
       - /mnt/ebs/media:/app/media
       - /mnt/ebs/staticfiles:/app/staticfiles
