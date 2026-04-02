@@ -42,10 +42,11 @@ services:
       ERP_BACKEND_URL: ${ERP_BACKEND_URL:-http://quidpath-backend-stage:8004}
       DJANGO_SETTINGS_MODULE: billing_service.settings.stage
       DJANGO_ENV: stage
-      PAYSTACK_PUBLIC_KEY: ${PAYSTACK_PUBLIC_KEY}
-      PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY}
-      PAYSTACK_TEST_MODE: ${PAYSTACK_TEST_MODE:-true}
-      PAYSTACK_CALLBACK_URL: ${PAYSTACK_CALLBACK_URL:-https://stage-billing.quidpath.com/api/billing/webhooks/paystack/}
+      PAYSTACK_PUBLIC_KEY: ${PAYSTACK_PUBLIC_KEY_STAGING}
+      PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY_STAGING}
+      PAYSTACK_TEST_MODE: "true"
+      PAYSTACK_WEBHOOK_URL: "https://stage-billing.quidpath.com/api/billing/webhooks/paystack/"
+      PAYSTACK_CALLBACK_URL: "https://stage.quidpath.com/payment/callback"
     volumes:
       - /mnt/quidpath-billing-stage-data/media:/app/media
       - /mnt/quidpath-billing-stage-data/staticfiles:/app/staticfiles
