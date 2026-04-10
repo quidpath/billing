@@ -43,11 +43,13 @@ else:
 DEBUG = False
 
 # Load allowed hosts from environment (comma-separated).
-# Always include billing-backend so main backend can call this service by container name.
+# Always include billing-backend containers so main backend can call this service by container name.
 _default_hosts = "billing.quidpath.com,api.quidpath.com,quidpath.com,www.quidpath.com,localhost,127.0.0.1,0.0.0.0"
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", _default_hosts).split(",") if h.strip()]
 if "billing-backend" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append("billing-backend")
+if "billing-backend-prod" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("billing-backend-prod")
 
 # CSRF & CORS CONFIGURATION
 _env_csrf = os.environ.get("CSRF_TRUSTED_ORIGINS", "").strip()
