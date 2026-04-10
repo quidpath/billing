@@ -68,6 +68,7 @@ jobs:
           secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY }}"
           secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY }}"
           secrets["BILLING_SERVICE_SECRET"]="${{ secrets.BILLING_SERVICE_SECRET }}"
+          secrets["BILLING_WEBHOOK_SECRET"]="${{ secrets.BILLING_WEBHOOK_SECRET }}"
 
           # Stage webhook URLs
           secrets["MPESA_CALLBACK_URL"]="https://stage-billing.quidpath.com/api/billing/webhooks/mpesa/"
@@ -92,6 +93,9 @@ jobs:
 
           # Stage allowed hosts
           secrets["ALLOWED_HOSTS"]="stage-billing.quidpath.com,localhost,127.0.0.1,0.0.0.0"
+          
+          # ERP Backend URL for service-to-service communication
+          secrets["ERP_BACKEND_URL"]="http://quidpath-backend-stage:8004"
           
           # Paystack - Stage (webhook verification uses SECRET_KEY)
           secrets["PAYSTACK_PUBLIC_KEY"]="${{ secrets.PAYSTACK_PUBLIC_KEY_STAGING }}"
