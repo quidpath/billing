@@ -9,6 +9,7 @@ from . import views_payment_simple
 from . import mpesa_webhook
 from . import views_paystack_webhook
 from . import views_individual_payment
+from . import views_admin_fix
 
 app_name = "billing"
 
@@ -63,4 +64,6 @@ urlpatterns = [
     
     # Admin endpoints
     path("admin/corporate-summary/", views.admin_get_corporate_summary, name="admin_corporate_summary"),
+    path("admin/fix-invoice/", views_admin_fix.fix_invoice_status, name="fix_invoice_status"),
+    path("admin/bulk-fix-invoices/", views_admin_fix.bulk_fix_invoices, name="bulk_fix_invoices"),
 ]

@@ -57,6 +57,25 @@ class PaymentService:
     ) -> Dict:
         """Initiate payment for an invoice via Paystack"""
         import os
+        from ..utils.transaction_logger import TransactionLogger
+
+        # Log payment initiation
+        TransactionLogger.log(
+            transaction_type="PAYMENT_INITIATED",
+            corporate_id=str(invoice.corporate_id),
+            corporate_name=invoice.corporate_name,
+            invoice_id=str(invoice.id),
+            subscription_id=str(invoice.subscription_id) if invoice.subscription_id else None,
+            amount=invoice.total_amount,
+            currency=invoice.currency,
+            message=f"Payment initiation started for invoice {invoice.invoice_number}",
+            state_name="Active",
+            metadata={
+                "payment_method": payment_method,
+                "customer_email": customer_email,
+                "customer_phone": customer_phone,
+            },
+        )
 
         # All payments go through Paystack
         provider = "paystack"

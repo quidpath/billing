@@ -6,6 +6,7 @@ from .plan import (BaseModel, Plan, PlanFeature, PlanModule,
 from .promotion import Promotion, PromotionUsage
 from .subscription import Subscription, SubscriptionHistory
 from .trial import Trial
+from .transaction_log import State, TransactionType, BillingTransaction, AuditLog
 
 __all__ = [
     "Plan",
@@ -23,4 +24,8 @@ __all__ = [
     "Payment",
     "PaymentMethod",
     "PaymentVerification",
+    "State",
+    "TransactionType",
+    "BillingTransaction",
+    "AuditLog",
 ]
