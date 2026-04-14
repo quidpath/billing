@@ -2,14 +2,15 @@
 Transaction Logging Models for Billing Service
 Tracks all actions and transactions in the billing microservice
 """
-from django.db import models
-from django.contrib.postgres.fields import JSONField as PostgresJSONField
+import uuid
 from decimal import Decimal
+
+from django.db import models
 
 
 class BaseModel(models.Model):
     """Base model with timestamps"""
-    id = models.UUIDField(primary_key=True, default=models.uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
