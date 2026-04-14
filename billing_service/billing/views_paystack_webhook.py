@@ -84,16 +84,18 @@ def handle_charge_success(data):
         metadata = data.get("metadata", {})
         authorization = data.get("authorization", {})
         
-        logger.info(f"Charge success: {reference}, amount: {amount} {currency}")
+        logger.info(f"Charge success: {reference}, amount: {amount} {currency}, metadata: {metadata}")
         
         # Check if this is a corporate registration payment
         registration_type = metadata.get("type") or metadata.get("registration_type")
         
         if registration_type == "corporate_registration":
+            logger.info(f"Handling as corporate registration payment: {reference}")
             return handle_corporate_registration_payment(data)
         
         # Check if this is a subscription payment
         elif metadata.get("subscription_id") or metadata.get("invoice_id"):
+            logger.info(f"Handling as subscription payment: {reference}")
             return handle_subscription_payment(data)
         
         # Generic payment handling
@@ -104,10 +106,13 @@ def handle_charge_success(data):
                 from .models.payment import Payment
                 payment = Payment.objects.filter(provider_reference=reference).first()
                 if payment:
+                    logger.info(f"Found payment {payment.id} for reference {reference}")
                     payment.mark_as_success(reference, data)
                     logger.info(f"Payment {payment.id} marked as success")
+                else:
+                    logger.warning(f"No payment record found for reference {reference}")
             except Exception as e:
-                logger.warning(f"Could not update payment record: {e}")
+                logger.error(f"Could not update payment record: {e}", exc_info=True)
             
             return HttpResponse(status=200)
     
@@ -188,25 +193,51 @@ def handle_corporate_registration_payment(data):
 def handle_subscription_payment(data):
     """
     Handle subscription payment success
+    Updates payment record, marks invoice as paid, and activates subscription
     """
     try:
         reference = data.get("reference")
         metadata = data.get("metadata", {})
         
-        logger.info(f"Subscription payment success: {reference}")
+        logger.info(f"Subscription payment success: {reference}, metadata: {metadata}")
         
-        # Use existing payment service to handle
-        result = PaymentService.handle_payment_webhook(
-            payload=data,
-            headers={},
-            provider="paystack"
-        )
+        # Find payment by provider reference
+        from .models.payment import Payment
+        payment = Payment.objects.filter(provider_reference=reference).first()
         
-        if result.get("success"):
-            logger.info(f"Subscription payment processed: {reference}")
-        else:
-            logger.error(f"Failed to process subscription payment: {result.get('message')}")
+        if not payment:
+            logger.warning(f"Payment not found for reference: {reference}")
+            return HttpResponse(status=200)
         
+        logger.info(f"Found payment {payment.id}, current status: {payment.status}, invoice: {payment.invoice_id}")
+        
+        # Mark payment as success (this will also mark invoice as paid)
+        payment.mark_as_success(reference, data)
+        
+        logger.info(f"Payment {payment.id} marked as success")
+        
+        # Verify invoice was marked as paid
+        if payment.invoice:
+            payment.invoice.refresh_from_db()
+            logger.info(f"Invoice {payment.invoice.id} status after payment: {payment.invoice.status}")
+            
+            if payment.invoice.status != "paid":
+                logger.error(f"Invoice {payment.invoice.id} was not marked as paid! Forcing update...")
+                payment.invoice.mark_as_paid(reference, "paystack")
+                logger.info(f"Invoice {payment.invoice.id} manually marked as paid")
+        
+        # Verify subscription was activated
+        if payment.subscription:
+            payment.subscription.refresh_from_db()
+            logger.info(f"Subscription {payment.subscription.id} status after payment: {payment.subscription.status}")
+            
+            if payment.subscription.status != "active":
+                logger.error(f"Subscription {payment.subscription.id} was not activated! Forcing update...")
+                payment.subscription.status = "active"
+                payment.subscription.save(update_fields=["status", "updated_at"])
+                logger.info(f"Subscription {payment.subscription.id} manually activated")
+        
+        logger.info(f"Subscription payment fully processed: {reference}")
         return HttpResponse(status=200)
     
     except Exception as e:

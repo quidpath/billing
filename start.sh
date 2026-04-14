@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
+# Billing Service Startup Script - Updated 2026-04-10
 echo "Starting Container"
 
 # Path where manage.py lives inside the container
