@@ -273,8 +273,9 @@ def handle_individual_payment(data):
                 from datetime import datetime, timedelta
                 from django.utils import timezone
                 
-                # Get pricing from plan
-                base_price = plan.base_price
+                # Get pricing from plan based on billing cycle
+                billing_cycle = "monthly"
+                base_price = plan.get_price_for_cycle(billing_cycle)
                 subtotal = base_price
                 total_amount = base_price
                 
@@ -286,11 +287,11 @@ def handle_individual_payment(data):
                     status="active",
                     start_date=timezone.now(),
                     end_date=timezone.now() + timedelta(days=30),
-                    billing_cycle="monthly",
+                    billing_cycle=billing_cycle,
                     base_price=base_price,
                     subtotal=subtotal,
                     total_amount=total_amount,
-                    currency=plan.currency,
+                    currency="KES",
                     auto_renew=True
                 )
                 logger.info(f"Created subscription {subscription.id} for corporate {corporate_id}")
@@ -378,6 +379,17 @@ def handle_individual_payment(data):
         customer_email = customer.get("email", "")
         customer_phone = customer.get("phone", "")
         authorization = data.get("authorization", {})
+        channel = data.get("channel", "card")  # card, bank, ussd, mobile_money
+        
+        # Map Paystack channel to payment_method
+        payment_method_map = {
+            "card": "card",
+            "bank": "bank_transfer",
+            "ussd": "ussd",
+            "mobile_money": "mobile_money",
+            "qr": "other"
+        }
+        payment_method = payment_method_map.get(channel, "card")
         
         payment = Payment.objects.create(
             subscription=subscription,
@@ -387,6 +399,7 @@ def handle_individual_payment(data):
             corporate_name=subscription.corporate_name,
             amount=amount,
             currency=currency,
+            payment_method=payment_method,
             provider="paystack",
             provider_reference=reference,
             status="success",
@@ -399,7 +412,7 @@ def handle_individual_payment(data):
                 "card_type": authorization.get("card_type", ""),
                 "last4": authorization.get("last4", ""),
                 "bank": authorization.get("bank", ""),
-                "channel": data.get("channel", ""),
+                "channel": channel,
                 "ip_address": data.get("ip_address", ""),
                 "fees": data.get("fees", 0) / 100 if data.get("fees") else 0,
                 "webhook_processed": True
