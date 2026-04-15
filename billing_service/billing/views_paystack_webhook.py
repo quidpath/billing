@@ -34,7 +34,7 @@ def paystack_webhook(request):
         
         # Check if this is a service-to-service call from quidpath-backend
         from django.conf import settings
-        expected_service_key = getattr(settings, 'SERVICE_SECRET', '')
+        expected_service_key = getattr(settings, 'BILLING_SERVICE_SECRET', '') or getattr(settings, 'SERVICE_SECRET', '')
         is_service_call = service_key and expected_service_key and service_key == expected_service_key
         
         if is_service_call:
