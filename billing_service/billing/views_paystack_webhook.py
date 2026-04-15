@@ -101,6 +101,9 @@ def handle_charge_success(data):
         
         logger.info(f"Charge success: {reference}, amount: {amount} {currency}, metadata: {metadata}")
         
+        # Check payment type from metadata
+        payment_type = metadata.get("payment_type")
+        
         # Check if this is a corporate registration payment
         registration_type = metadata.get("type") or metadata.get("registration_type")
         
@@ -108,8 +111,13 @@ def handle_charge_success(data):
             logger.info(f"Handling as corporate registration payment: {reference}")
             return handle_corporate_registration_payment(data)
         
-        # Check if this is a subscription payment
-        elif metadata.get("subscription_id") or metadata.get("invoice_id"):
+        # Check if this is an individual payment
+        elif payment_type == "individual":
+            logger.info(f"Handling as individual payment: {reference}")
+            return handle_individual_payment(data)
+        
+        # Check if this is a subscription payment (organization)
+        elif metadata.get("subscription_id") or metadata.get("invoice_id") or payment_type == "organization":
             logger.info(f"Handling as subscription payment: {reference}")
             return handle_subscription_payment(data)
         
@@ -205,6 +213,158 @@ def handle_corporate_registration_payment(data):
         return HttpResponse(status=200)  # Still acknowledge to Paystack
 
 
+def handle_individual_payment(data):
+    """
+    Handle individual user payment success
+    Creates/updates subscription, invoice, and payment records
+    """
+    try:
+        reference = data.get("reference")
+        amount = data.get("amount", 0) / 100  # Convert from kobo to main unit
+        currency = data.get("currency", "KES")
+        metadata = data.get("metadata", {})
+        customer = data.get("customer", {})
+        
+        corporate_id = metadata.get("corporate_id")
+        plan_id = metadata.get("plan_id")
+        plan_tier = metadata.get("plan_tier", "starter")
+        
+        logger.info(f"Individual payment success: {reference}, corporate_id: {corporate_id}, plan_id: {plan_id}")
+        
+        if not corporate_id:
+            logger.error(f"No corporate_id in metadata for reference {reference}")
+            return HttpResponse(status=200)
+        
+        # Check if payment record already exists
+        from .models.payment import Payment
+        from .models.subscription import Subscription
+        from .models.invoice import Invoice
+        from .models.plan import SubscriptionPlan
+        
+        payment = Payment.objects.filter(provider_reference=reference).first()
+        
+        if payment:
+            logger.info(f"Payment record already exists: {payment.id}, marking as success")
+            payment.mark_as_success(reference, data)
+            return HttpResponse(status=200)
+        
+        # Get or create subscription
+        subscription = Subscription.objects.filter(
+            corporate_id=corporate_id,
+            subscription_type="individual"
+        ).first()
+        
+        if not subscription:
+            # Get plan
+            try:
+                if plan_id:
+                    plan = SubscriptionPlan.objects.get(id=plan_id)
+                else:
+                    plan = SubscriptionPlan.objects.filter(
+                        tier=plan_tier,
+                        subscription_type="individual"
+                    ).first()
+                    
+                if not plan:
+                    logger.error(f"Plan not found: plan_id={plan_id}, tier={plan_tier}")
+                    return HttpResponse(status=200)
+                
+                # Create subscription
+                from datetime import datetime, timedelta
+                from django.utils import timezone
+                
+                subscription = Subscription.objects.create(
+                    corporate_id=corporate_id,
+                    corporate_name=customer.get("email", "Individual User"),
+                    plan=plan,
+                    subscription_type="individual",
+                    status="active",
+                    start_date=timezone.now(),
+                    end_date=timezone.now() + timedelta(days=30),
+                    billing_cycle="monthly",
+                    auto_renew=True
+                )
+                logger.info(f"Created subscription {subscription.id} for corporate {corporate_id}")
+                
+            except Exception as e:
+                logger.error(f"Error creating subscription: {e}", exc_info=True)
+                return HttpResponse(status=200)
+        else:
+            # Update existing subscription
+            subscription.status = "active"
+            subscription.save(update_fields=["status", "updated_at"])
+            logger.info(f"Updated subscription {subscription.id} to active")
+        
+        # Get or create invoice
+        invoice = Invoice.objects.filter(
+            subscription=subscription,
+            status__in=["pending", "draft"]
+        ).first()
+        
+        if not invoice:
+            # Create invoice
+            invoice = Invoice.objects.create(
+                subscription=subscription,
+                corporate_id=corporate_id,
+                corporate_name=subscription.corporate_name,
+                amount=amount,
+                currency=currency,
+                status="paid",
+                paid_at=timezone.now()
+            )
+            logger.info(f"Created and marked invoice {invoice.invoice_number} as paid")
+        else:
+            # Mark existing invoice as paid
+            invoice.mark_as_paid(reference, "paystack")
+            logger.info(f"Marked existing invoice {invoice.invoice_number} as paid")
+        
+        # Create payment record
+        payment = Payment.objects.create(
+            subscription=subscription,
+            invoice=invoice,
+            payment_type="individual",
+            corporate_id=corporate_id,
+            corporate_name=subscription.corporate_name,
+            amount=amount,
+            currency=currency,
+            provider="paystack",
+            provider_reference=reference,
+            status="success",
+            metadata=metadata
+        )
+        logger.info(f"Created payment record {payment.id} for reference {reference}")
+        
+        # Log transaction
+        try:
+            from .models.billing_transaction import BillingTransaction
+            BillingTransaction.objects.create(
+                corporate_id=corporate_id,
+                transaction_type="PAYMENT_RECEIVED",
+                amount=amount,
+                currency=currency,
+                reference=reference,
+                description=f"Individual subscription payment - {subscription.plan.name}",
+                metadata={
+                    "payment_id": str(payment.id),
+                    "invoice_id": str(invoice.id),
+                    "subscription_id": str(subscription.id),
+                    "provider": "paystack"
+                }
+            )
+            logger.info(f"Logged billing transaction for reference {reference}")
+        except Exception as e:
+            logger.warning(f"Could not log billing transaction: {e}")
+        
+        logger.info(f"Individual payment fully processed: {reference}")
+        logger.info(f"Final status - Payment: {payment.status}, Invoice: {invoice.status}, Subscription: {subscription.status}")
+        
+        return HttpResponse(status=200)
+    
+    except Exception as e:
+        logger.error(f"Error handling individual payment: {e}", exc_info=True)
+        return HttpResponse(status=200)  # Still acknowledge to Paystack
+
+
 def handle_subscription_payment(data):
     """
     Handle subscription payment success
@@ -250,7 +410,58 @@ def handle_subscription_payment(data):
             ).order_by("-created_at")[:5]
             logger.error(f"Recent pending payments: {[str(p.id) for p in recent_payments]}")
             
-            return HttpResponse(status=200)
+            # Try to create payment record if we have enough information
+            corporate_id = metadata.get("corporate_id")
+            if corporate_id:
+                logger.info(f"Attempting to create payment record for corporate {corporate_id}")
+                try:
+                    from .models.subscription import Subscription
+                    from .models.invoice import Invoice
+                    
+                    # Find subscription
+                    subscription = Subscription.objects.filter(
+                        corporate_id=corporate_id,
+                        subscription_type="organization"
+                    ).order_by("-created_at").first()
+                    
+                    if subscription:
+                        # Find unpaid invoice
+                        invoice = Invoice.objects.filter(
+                            subscription=subscription,
+                            status__in=["pending", "draft"]
+                        ).order_by("-created_at").first()
+                        
+                        if invoice:
+                            amount = data.get("amount", 0) / 100
+                            currency = data.get("currency", "KES")
+                            
+                            # Create payment record
+                            payment = Payment.objects.create(
+                                subscription=subscription,
+                                invoice=invoice,
+                                payment_type="organization",
+                                corporate_id=corporate_id,
+                                corporate_name=subscription.corporate_name,
+                                amount=amount,
+                                currency=currency,
+                                provider="paystack",
+                                provider_reference=reference,
+                                status="processing",
+                                metadata=metadata
+                            )
+                            logger.info(f"Created payment record {payment.id} from webhook data")
+                        else:
+                            logger.error(f"No unpaid invoice found for subscription {subscription.id}")
+                            return HttpResponse(status=200)
+                    else:
+                        logger.error(f"No subscription found for corporate {corporate_id}")
+                        return HttpResponse(status=200)
+                except Exception as e:
+                    logger.error(f"Failed to create payment record: {e}", exc_info=True)
+                    return HttpResponse(status=200)
+            else:
+                logger.error("No corporate_id in metadata, cannot create payment record")
+                return HttpResponse(status=200)
         
         logger.info(f"Found payment {payment.id}, current status: {payment.status}, invoice: {payment.invoice_id}")
         
@@ -294,6 +505,31 @@ def handle_subscription_payment(data):
         
         logger.info(f"Subscription payment fully processed: {reference}")
         logger.info(f"Final status - Payment: {payment.status}, Invoice: {payment.invoice.status if payment.invoice else 'N/A'}, Subscription: {payment.subscription.status if payment.subscription else 'N/A'}")
+        
+        # Log transaction
+        try:
+            from .models.billing_transaction import BillingTransaction
+            amount = data.get("amount", 0) / 100  # Convert from kobo to main unit
+            currency = data.get("currency", "KES")
+            
+            BillingTransaction.objects.create(
+                corporate_id=payment.corporate_id,
+                transaction_type="PAYMENT_RECEIVED",
+                amount=amount,
+                currency=currency,
+                reference=reference,
+                description=f"Subscription payment - {payment.subscription.plan.name if payment.subscription else 'Unknown Plan'}",
+                metadata={
+                    "payment_id": str(payment.id),
+                    "invoice_id": str(payment.invoice.id) if payment.invoice else None,
+                    "subscription_id": str(payment.subscription.id) if payment.subscription else None,
+                    "provider": "paystack",
+                    "payment_type": "organization"
+                }
+            )
+            logger.info(f"Logged billing transaction for reference {reference}")
+        except Exception as e:
+            logger.warning(f"Could not log billing transaction: {e}")
         
         return HttpResponse(status=200)
     
