@@ -21,21 +21,36 @@ def paystack_webhook(request):
     """
     Handle Paystack webhook events
     Events: charge.success, charge.failed, transfer.success, etc.
+    
+    Accepts webhooks from:
+    1. Paystack directly (with signature verification)
+    2. quidpath-backend proxy (with X-Service-Key authentication)
     """
     try:
         # Get raw body for signature verification
         payload = request.body
         signature = request.headers.get('x-paystack-signature') or request.headers.get('X-Paystack-Signature')
+        service_key = request.headers.get('X-Service-Key')
         
-        if not signature:
-            logger.warning("Paystack webhook received without signature")
-            return JsonResponse({"error": "No signature provided"}, status=400)
+        # Check if this is a service-to-service call from quidpath-backend
+        from django.conf import settings
+        expected_service_key = getattr(settings, 'SERVICE_SECRET', '')
+        is_service_call = service_key and expected_service_key and service_key == expected_service_key
         
-        # Verify signature
-        paystack = PaystackService()
-        if not paystack.verify_webhook_signature(payload, signature):
-            logger.error("Invalid Paystack webhook signature")
-            return JsonResponse({"error": "Invalid signature"}, status=401)
+        if is_service_call:
+            logger.info("Webhook authenticated via X-Service-Key (from quidpath-backend)")
+        elif signature:
+            # Verify Paystack signature
+            paystack = PaystackService()
+            if not paystack.verify_webhook_signature(payload, signature):
+                logger.error("Invalid Paystack webhook signature")
+                logger.error(f"Signature received: {signature[:20]}...")
+                logger.error(f"Payload length: {len(payload)}")
+                return JsonResponse({"error": "Invalid signature"}, status=401)
+            logger.info("Webhook authenticated via Paystack signature")
+        else:
+            logger.warning("Paystack webhook received without signature or service key")
+            return JsonResponse({"error": "No authentication provided"}, status=400)
         
         # Parse payload
         try:
@@ -200,16 +215,50 @@ def handle_subscription_payment(data):
         metadata = data.get("metadata", {})
         
         logger.info(f"Subscription payment success: {reference}, metadata: {metadata}")
+        logger.info(f"Full webhook data: {json.dumps(data, indent=2)}")
         
         # Find payment by provider reference
         from .models.payment import Payment
         payment = Payment.objects.filter(provider_reference=reference).first()
         
+        # If not found by provider_reference, try to find by metadata
+        if not payment and metadata.get("payment_id"):
+            logger.info(f"Payment not found by reference, trying payment_id: {metadata.get('payment_id')}")
+            try:
+                payment = Payment.objects.get(id=metadata.get("payment_id"))
+                logger.info(f"Found payment by payment_id: {payment.id}")
+            except Payment.DoesNotExist:
+                logger.warning(f"Payment not found by payment_id either")
+        
+        # If still not found, try to find by invoice_id
+        if not payment and metadata.get("invoice_id"):
+            logger.info(f"Payment not found, trying invoice_id: {metadata.get('invoice_id')}")
+            payment = Payment.objects.filter(
+                invoice_id=metadata.get("invoice_id"),
+                status__in=["pending", "processing"]
+            ).first()
+            if payment:
+                logger.info(f"Found payment by invoice_id: {payment.id}")
+        
         if not payment:
-            logger.warning(f"Payment not found for reference: {reference}")
+            logger.error(f"Payment not found for reference: {reference}, metadata: {metadata}")
+            logger.error(f"Searched by: provider_reference={reference}, payment_id={metadata.get('payment_id')}, invoice_id={metadata.get('invoice_id')}")
+            
+            # List recent pending payments for debugging
+            recent_payments = Payment.objects.filter(
+                status__in=["pending", "processing"]
+            ).order_by("-created_at")[:5]
+            logger.error(f"Recent pending payments: {[str(p.id) for p in recent_payments]}")
+            
             return HttpResponse(status=200)
         
         logger.info(f"Found payment {payment.id}, current status: {payment.status}, invoice: {payment.invoice_id}")
+        
+        # Update provider_reference if it wasn't set
+        if not payment.provider_reference:
+            logger.info(f"Setting provider_reference to {reference}")
+            payment.provider_reference = reference
+            payment.save(update_fields=["provider_reference"])
         
         # Mark payment as success (this will also mark invoice as paid)
         payment.mark_as_success(reference, data)
@@ -224,7 +273,10 @@ def handle_subscription_payment(data):
             if payment.invoice.status != "paid":
                 logger.error(f"Invoice {payment.invoice.id} was not marked as paid! Forcing update...")
                 payment.invoice.mark_as_paid(reference, "paystack")
-                logger.info(f"Invoice {payment.invoice.id} manually marked as paid")
+                payment.invoice.refresh_from_db()
+                logger.info(f"Invoice {payment.invoice.id} manually marked as paid, new status: {payment.invoice.status}")
+        else:
+            logger.warning(f"Payment {payment.id} has no associated invoice")
         
         # Verify subscription was activated
         if payment.subscription:
@@ -235,9 +287,14 @@ def handle_subscription_payment(data):
                 logger.error(f"Subscription {payment.subscription.id} was not activated! Forcing update...")
                 payment.subscription.status = "active"
                 payment.subscription.save(update_fields=["status", "updated_at"])
-                logger.info(f"Subscription {payment.subscription.id} manually activated")
+                payment.subscription.refresh_from_db()
+                logger.info(f"Subscription {payment.subscription.id} manually activated, new status: {payment.subscription.status}")
+        else:
+            logger.warning(f"Payment {payment.id} has no associated subscription")
         
         logger.info(f"Subscription payment fully processed: {reference}")
+        logger.info(f"Final status - Payment: {payment.status}, Invoice: {payment.invoice.status if payment.invoice else 'N/A'}, Subscription: {payment.subscription.status if payment.subscription else 'N/A'}")
+        
         return HttpResponse(status=200)
     
     except Exception as e:
