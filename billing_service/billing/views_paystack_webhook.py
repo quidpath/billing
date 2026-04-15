@@ -239,7 +239,7 @@ def handle_individual_payment(data):
         from .models.payment import Payment
         from .models.subscription import Subscription
         from .models.invoice import Invoice
-        from .models.plan import SubscriptionPlan
+        from .models.plan import Plan
         
         payment = Payment.objects.filter(provider_reference=reference).first()
         
@@ -258,9 +258,9 @@ def handle_individual_payment(data):
             # Get plan
             try:
                 if plan_id:
-                    plan = SubscriptionPlan.objects.get(id=plan_id)
+                    plan = Plan.objects.get(id=plan_id)
                 else:
-                    plan = SubscriptionPlan.objects.filter(
+                    plan = Plan.objects.filter(
                         tier=plan_tier,
                         subscription_type="individual"
                     ).first()
@@ -302,23 +302,74 @@ def handle_individual_payment(data):
         ).first()
         
         if not invoice:
-            # Create invoice
+            # Create invoice with all required fields and payment details
+            from datetime import datetime, timedelta
+            from django.utils import timezone
+            
+            today = timezone.now().date()
+            
+            # Extract payment details from webhook data
+            customer_email = customer.get("email", "")
+            customer_phone = customer.get("phone", "")
+            authorization = data.get("authorization", {})
+            
             invoice = Invoice.objects.create(
                 subscription=subscription,
                 corporate_id=corporate_id,
                 corporate_name=subscription.corporate_name,
-                amount=amount,
+                subtotal=amount,
+                total_amount=amount,
                 currency=currency,
                 status="paid",
-                paid_at=timezone.now()
+                paid_at=timezone.now(),
+                payment_reference=reference,
+                payment_provider="paystack",
+                billing_period_start=today,
+                billing_period_end=today + timedelta(days=30),
+                due_date=today,
+                metadata={
+                    "payment_type": "individual",
+                    "plan_id": str(plan_id) if plan_id else None,
+                    "plan_tier": plan_tier,
+                    "customer_email": customer_email,
+                    "customer_phone": customer_phone,
+                    "authorization_code": authorization.get("authorization_code", ""),
+                    "card_type": authorization.get("card_type", ""),
+                    "last4": authorization.get("last4", ""),
+                    "bank": authorization.get("bank", ""),
+                    "channel": data.get("channel", ""),
+                    "paid_via_webhook": True,
+                    "webhook_timestamp": timezone.now().isoformat()
+                }
             )
-            logger.info(f"Created and marked invoice {invoice.invoice_number} as paid")
+            logger.info(f"Created and marked invoice {invoice.invoice_number} as paid with payment details")
         else:
-            # Mark existing invoice as paid
+            # Mark existing invoice as paid and update metadata
             invoice.mark_as_paid(reference, "paystack")
-            logger.info(f"Marked existing invoice {invoice.invoice_number} as paid")
+            
+            # Update metadata with payment details
+            customer_email = customer.get("email", "")
+            authorization = data.get("authorization", {})
+            
+            invoice.metadata = {
+                **invoice.metadata,
+                "customer_email": customer_email,
+                "authorization_code": authorization.get("authorization_code", ""),
+                "card_type": authorization.get("card_type", ""),
+                "last4": authorization.get("last4", ""),
+                "bank": authorization.get("bank", ""),
+                "channel": data.get("channel", ""),
+                "paid_via_webhook": True,
+                "webhook_timestamp": timezone.now().isoformat()
+            }
+            invoice.save(update_fields=["metadata", "updated_at"])
+            logger.info(f"Marked existing invoice {invoice.invoice_number} as paid with payment details")
         
-        # Create payment record
+        # Create payment record with full details
+        customer_email = customer.get("email", "")
+        customer_phone = customer.get("phone", "")
+        authorization = data.get("authorization", {})
+        
         payment = Payment.objects.create(
             subscription=subscription,
             invoice=invoice,
@@ -330,7 +381,20 @@ def handle_individual_payment(data):
             provider="paystack",
             provider_reference=reference,
             status="success",
-            metadata=metadata
+            paid_at=timezone.now(),
+            customer_email=customer_email,
+            customer_phone=customer_phone,
+            metadata={
+                **metadata,
+                "authorization_code": authorization.get("authorization_code", ""),
+                "card_type": authorization.get("card_type", ""),
+                "last4": authorization.get("last4", ""),
+                "bank": authorization.get("bank", ""),
+                "channel": data.get("channel", ""),
+                "ip_address": data.get("ip_address", ""),
+                "fees": data.get("fees", 0) / 100 if data.get("fees") else 0,
+                "webhook_processed": True
+            }
         )
         logger.info(f"Created payment record {payment.id} for reference {reference}")
         
