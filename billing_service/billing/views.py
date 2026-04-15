@@ -530,6 +530,7 @@ def initiate_payment(request):
 def payment_webhook(request):
     """Payment webhook - SECURE: Verifies signature, traces payment to company"""
     import logging
+    from .utils.transaction_logger import TransactionLogger
 
     logger = logging.getLogger(__name__)
 
@@ -539,6 +540,15 @@ def payment_webhook(request):
 
         logger.info(
             f"Webhook received: path={request.path}, payload keys={list(payload.keys())}"
+        )
+        
+        # Log webhook received
+        TransactionLogger.log(
+            transaction_type="PAYMENT_WEBHOOK_RECEIVED",
+            message=f"Payment webhook received from provider",
+            state_name="Active",
+            metadata={"payload_keys": list(payload.keys())},
+            request=request,
         )
 
         # All webhooks are from Paystack

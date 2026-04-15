@@ -130,23 +130,119 @@ class Payment(BaseModel):
 
     def mark_as_success(self, provider_reference: str, metadata: dict = None):
         """Mark payment as successful"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        from ..utils.transaction_logger import TransactionLogger
+        
+        logger.info(f"Marking payment {self.id} as success. Current status: {self.status}, Invoice: {self.invoice_id}")
+        
+        # Log transaction start
+        TransactionLogger.log(
+            transaction_type="PAYMENT_SUCCESS",
+            corporate_id=str(self.corporate_id),
+            corporate_name=self.corporate_name,
+            payment_id=str(self.id),
+            invoice_id=str(self.invoice_id) if self.invoice_id else None,
+            subscription_id=str(self.subscription_id) if self.subscription_id else None,
+            amount=self.amount,
+            currency=self.currency,
+            message=f"Payment {self.id} marked as successful",
+            state_name="Processing",
+            provider=self.provider,
+            provider_reference=provider_reference,
+            metadata=metadata or {},
+        )
+        
         self.status = "success"
         self.paid_at = timezone.now()
         self.provider_reference = provider_reference
         if metadata:
             self.provider_metadata = {**self.provider_metadata, **metadata}
-        self.save()
+        self.save(update_fields=["status", "paid_at", "provider_reference", "provider_metadata", "updated_at"])
+        
+        logger.info(f"Payment {self.id} marked as success. New status: {self.status}")
 
         # Update invoice if exists
         if self.invoice:
+            logger.info(f"Payment {self.id} has invoice {self.invoice.id}, marking as paid")
             self.invoice.mark_as_paid(provider_reference, self.provider)
+            # Refresh to verify
+            self.invoice.refresh_from_db()
+            logger.info(f"Invoice {self.invoice.id} status after mark_as_paid: {self.invoice.status}")
+            
+            # Log successful completion
+            TransactionLogger.log(
+                transaction_type="PAYMENT_SUCCESS",
+                corporate_id=str(self.corporate_id),
+                corporate_name=self.corporate_name,
+                payment_id=str(self.id),
+                invoice_id=str(self.invoice_id),
+                subscription_id=str(self.subscription_id) if self.subscription_id else None,
+                amount=self.amount,
+                currency=self.currency,
+                message=f"Payment {self.id} completed successfully, invoice {self.invoice.id} marked as paid",
+                state_name="Completed",
+                provider=self.provider,
+                provider_reference=provider_reference,
+                response_code="200",
+                response_message="Payment and invoice updated successfully",
+                metadata=metadata or {},
+            )
+        else:
+            logger.warning(f"Payment {self.id} has no associated invoice")
+            
+            # Log completion without invoice
+            TransactionLogger.log(
+                transaction_type="PAYMENT_SUCCESS",
+                corporate_id=str(self.corporate_id),
+                corporate_name=self.corporate_name,
+                payment_id=str(self.id),
+                amount=self.amount,
+                currency=self.currency,
+                message=f"Payment {self.id} completed successfully (no invoice)",
+                state_name="Completed",
+                provider=self.provider,
+                provider_reference=provider_reference,
+                response_code="200",
+                response_message="Payment updated successfully",
+                metadata=metadata or {},
+            )
 
     def mark_as_failed(self, reason: str = ""):
         """Mark payment as failed"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        from ..utils.transaction_logger import TransactionLogger
+        
+        logger.info(f"Marking payment {self.id} as failed. Reason: {reason}")
+        
         self.status = "failed"
         if reason:
             self.metadata["failure_reason"] = reason
         self.save()
+        
+        # Log failed payment
+        TransactionLogger.log(
+            transaction_type="PAYMENT_FAILED",
+            corporate_id=str(self.corporate_id),
+            corporate_name=self.corporate_name,
+            payment_id=str(self.id),
+            invoice_id=str(self.invoice_id) if self.invoice_id else None,
+            subscription_id=str(self.subscription_id) if self.subscription_id else None,
+            amount=self.amount,
+            currency=self.currency,
+            message=f"Payment {self.id} failed: {reason}",
+            state_name="Failed",
+            provider=self.provider,
+            provider_reference=self.provider_reference or "",
+            response_code="400",
+            response_message=reason,
+            metadata=self.metadata,
+        )
+        
+        logger.info(f"Payment {self.id} marked as failed")
 
 
 class PaymentMethod(BaseModel):

@@ -58,8 +58,20 @@ class JWTAuthenticationMiddleware:
                 logger.info(f"Service-to-service call authenticated for {request.path}")
                 return self.get_response(request)
             elif key:
-                logger.warning(f"Invalid service key for {request.path}")
+                logger.warning(
+                    f"Invalid service key for {request.path}. "
+                    f"Received key length: {len(key)}, Expected key length: {len(service_secret)}"
+                )
+            else:
+                logger.warning(
+                    f"No service key provided for {request.path}. "
+                    f"Expected X-Service-Key header. Service secret configured: {bool(service_secret)}"
+                )
             # If no service key or invalid, fall through to JWT validation
+        elif self._is_service_to_service_path(request.path):
+            logger.warning(
+                f"Service-to-service path {request.path} accessed but BILLING_SERVICE_SECRET not configured"
+            )
 
         # Extract token from Authorization header
         auth_header = request.META.get("HTTP_AUTHORIZATION", "").strip()

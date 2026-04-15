@@ -66,6 +66,8 @@ jobs:
           # Production app secrets
           secrets["SECRET_KEY"]="${{ secrets.SECRET_KEY }}"
           secrets["JWT_SECRET_KEY"]="${{ secrets.JWT_SECRET_KEY }}"
+          secrets["BILLING_SERVICE_SECRET"]="${{ secrets.BILLING_SERVICE_SECRET }}"
+          secrets["BILLING_WEBHOOK_SECRET"]="${{ secrets.BILLING_WEBHOOK_SECRET }}"
 
           # Production webhook URLs
           secrets["MPESA_CALLBACK_URL"]="${{ secrets.MPESA_CALLBACK_URL }}"
@@ -95,6 +97,11 @@ jobs:
 
           # Production allowed hosts
           secrets["ALLOWED_HOSTS"]="${{ secrets.ALLOWED_HOSTS }}"
+          
+          # ERP Backend URL for service-to-service communication
+          secrets["ERP_BACKEND_URL"]="http://quidpath-backend-prod:8004"
+          secrets["FRONTEND_URL"]="https://www.quidpath.com"
+          secrets["BACKEND_URL"]="https://api.quidpath.com"
 
           json="{}"
           for key in "${!secrets[@]}"; do
