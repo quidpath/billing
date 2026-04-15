@@ -273,6 +273,11 @@ def handle_individual_payment(data):
                 from datetime import datetime, timedelta
                 from django.utils import timezone
                 
+                # Get pricing from plan
+                base_price = plan.base_price
+                subtotal = base_price
+                total_amount = base_price
+                
                 subscription = Subscription.objects.create(
                     corporate_id=corporate_id,
                     corporate_name=customer.get("email", "Individual User"),
@@ -282,6 +287,10 @@ def handle_individual_payment(data):
                     start_date=timezone.now(),
                     end_date=timezone.now() + timedelta(days=30),
                     billing_cycle="monthly",
+                    base_price=base_price,
+                    subtotal=subtotal,
+                    total_amount=total_amount,
+                    currency=plan.currency,
                     auto_renew=True
                 )
                 logger.info(f"Created subscription {subscription.id} for corporate {corporate_id}")
