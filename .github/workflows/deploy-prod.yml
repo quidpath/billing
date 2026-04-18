@@ -99,7 +99,7 @@ jobs:
           secrets["ALLOWED_HOSTS"]="${{ secrets.ALLOWED_HOSTS }}"
           
           # ERP Backend URL for service-to-service communication
-          secrets["ERP_BACKEND_URL"]="http://quidpath-backend-prod:8004"
+          secrets["ERP_BACKEND_URL"]="http://51.77.147.233:8004"
           secrets["FRONTEND_URL"]="https://www.quidpath.com"
           secrets["BACKEND_URL"]="https://api.quidpath.com"
 

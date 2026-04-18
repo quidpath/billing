@@ -44,9 +44,6 @@ fi
 
 echo " Using Python at: $PYTHON"
 
-echo " Running makemigrations..."
-$PYTHON manage.py makemigrations --noinput
-
 echo " Running migrations..."
 $PYTHON manage.py migrate --database=default --noinput
 
