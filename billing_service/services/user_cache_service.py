@@ -102,7 +102,7 @@ class UserCacheService:
     def _fetch_user_from_api(self, user_id: str) -> Optional[Dict]:
         """Fetch user data from main backend API"""
         try:
-            url = f"{self.backend_url}/api/internal/users/{user_id}/"
+            url = f"{self.backend_url}/api/auth/users/{user_id}/"
             headers = {"X-Service-Key": self.service_key}
 
             if not self.service_key:
@@ -122,7 +122,7 @@ class UserCacheService:
     def _fetch_corporate_from_api(self, corporate_id: str) -> Optional[Dict]:
         """Fetch corporate data from main backend API"""
         try:
-            url = f"{self.backend_url}/api/internal/corporates/{corporate_id}/"
+            url = f"{self.backend_url}/api/auth/corporates/{corporate_id}/"
             headers = {"X-Service-Key": self.service_key}
 
             if not self.service_key:
