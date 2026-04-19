@@ -95,7 +95,7 @@ jobs:
           secrets["ALLOWED_HOSTS"]="stage-billing.quidpath.com,localhost,127.0.0.1,0.0.0.0"
           
           # ERP Backend URL for service-to-service communication
-          secrets["ERP_BACKEND_URL"]="http://51.77.147.233:8011"
+          secrets["ERP_BACKEND_URL"]="http://quidpath-backend-stage:8004"
           
           # Paystack - Stage (webhook verification uses SECRET_KEY)
           secrets["PAYSTACK_PUBLIC_KEY"]="${{ secrets.PAYSTACK_PUBLIC_KEY_STAGING }}"
