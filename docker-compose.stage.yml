@@ -4,12 +4,11 @@ services:
     container_name: postgres_billing_stage
     restart: unless-stopped
     volumes:
-      - /mnt/quidpath-billing-db-stage/postgres:/var/lib/postgresql/data
+      - /mnt/ebs/billing/postgres_data_stage:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -24,7 +23,7 @@ services:
     container_name: billing-backend-stage
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8012:8000"
+      - "127.0.0.1:8009:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -48,8 +47,8 @@ services:
       PAYSTACK_WEBHOOK_URL: "https://stage-billing.quidpath.com/api/billing/webhooks/paystack/"
       PAYSTACK_CALLBACK_URL: "https://stage.quidpath.com/payment/callback"
     volumes:
-      - /mnt/quidpath-billing-stage-data/media:/app/media
-      - /mnt/quidpath-billing-stage-data/staticfiles:/app/staticfiles
+      - /mnt/ebs/billing/media_stage:/app/media
+      - /mnt/ebs/billing/staticfiles_stage:/app/staticfiles
     networks:
       - billing_network
       - quidpath_network
@@ -61,3 +60,11 @@ networks:
   quidpath_network:
     external: true
     name: stage_quidpath_network
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/ebs/billing/postgres_data_stage
